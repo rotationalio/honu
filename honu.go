@@ -12,6 +12,7 @@ import (
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/proto/v1"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -131,11 +132,14 @@ func (d *DB) Delete(key []byte) (err error) {
 		return err
 	}
 
-	// Unmarshall the version information
+	// Unmarshal the version information
 	obj := new(pb.Object)
 	if err = proto.Unmarshal(data, obj); err != nil {
 		return err
 	}
+
+	// Don't save the data back to disk
+	obj.Data = nil
 
 	// Create a tombstone for the data
 	if err = d.vm.Delete(obj); err != nil {
@@ -154,8 +158,12 @@ func (d *DB) Delete(key []byte) (err error) {
 
 // Iter over a subset of keys specified by the prefix.
 // TODO: provide better mechanisms for iteration.
-func (d *DB) Iter(prefix []byte) (i *iterator.Iterator, err error) {
-	return nil, errors.New("not implemented yet")
+func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
+	var slice *util.Range
+	if len(prefix) > 0 {
+		slice = util.BytesPrefix(prefix)
+	}
+	return iterator.NewLevelDBIterator(d.ldb.NewIterator(slice, nil)), nil
 }
 
 // Version returns metadata associated with the latest object stored by the key.

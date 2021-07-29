@@ -1,17 +1,41 @@
 package iterator
 
-import pb "github.com/rotationalio/honu/proto/v1"
+import (
+	"github.com/golang/protobuf/proto"
+	pb "github.com/rotationalio/honu/proto/v1"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
+)
+
+func NewLevelDBIterator(iter iterator.Iterator) Iterator {
+	return &ldbIterator{ldb: iter}
+}
 
 // Wraps the underlying leveldb iterator to provide object management access.
-type ldbIterator struct{}
+type ldbIterator struct {
+	ldb iterator.Iterator
+}
 
 // Type check for the ldbIterator
 var _ Iterator = &ldbIterator{}
 
-func (i *ldbIterator) Next() bool                { return false }
-func (i *ldbIterator) Prev() bool                { return false }
-func (*ldbIterator) Key() []byte                 { return nil }
-func (*ldbIterator) Value() []byte               { return nil }
-func (*ldbIterator) Object() (*pb.Object, error) { return nil, nil }
-func (i *ldbIterator) Error() error              { return nil }
-func (i *ldbIterator) Release()                  {}
+func (i *ldbIterator) Next() bool   { return i.ldb.Next() }
+func (i *ldbIterator) Prev() bool   { return i.ldb.Prev() }
+func (i *ldbIterator) Key() []byte  { return i.ldb.Key() }
+func (i *ldbIterator) Error() error { return i.ldb.Error() }
+func (i *ldbIterator) Release()     { i.ldb.Release() }
+
+func (i *ldbIterator) Value() []byte {
+	obj, _ := i.Object()
+	if obj != nil {
+		return obj.Data
+	}
+	return nil
+}
+
+func (i *ldbIterator) Object() (obj *pb.Object, err error) {
+	obj = new(pb.Object)
+	if err = proto.Unmarshal(i.Value(), obj); err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
