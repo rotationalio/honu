@@ -1,2 +1,3 @@
-# honu
-A library for embedded database replication
+# Honu
+
+**A library for embedded database replication**
