@@ -66,6 +66,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), obj.Version.Version)
 	require.True(t, obj.Tombstone())
+	require.Empty(t, obj.Data)
 
 	// Be able to "undelete" a tombstone
 	err = db.Put([]byte("foo"), []byte("this is the undead foo"))
