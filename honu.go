@@ -166,8 +166,8 @@ func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
 	return iterator.NewLevelDBIterator(d.ldb.NewIterator(slice, nil)), nil
 }
 
-// Version returns metadata associated with the latest object stored by the key.
-func (d *DB) Version(key []byte) (_ *pb.Object, err error) {
+// Object returns metadata associated with the latest object stored by the key.
+func (d *DB) Object(key []byte) (_ *pb.Object, err error) {
 	// Fetch the value from the database
 	var value []byte
 	if value, err = d.ldb.Get(key, nil); err != nil {

@@ -34,7 +34,7 @@ func (i *ldbIterator) Value() []byte {
 
 func (i *ldbIterator) Object() (obj *pb.Object, err error) {
 	obj = new(pb.Object)
-	if err = proto.Unmarshal(i.Value(), obj); err != nil {
+	if err = proto.Unmarshal(i.ldb.Value(), obj); err != nil {
 		return nil, err
 	}
 	return obj, nil
