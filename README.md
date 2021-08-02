@@ -17,3 +17,5 @@ BenchmarkHonuIter-8        	   63772	     18349 ns/op
 BenchmarkLevelDBIter-8     	  255319	      4271 ns/op
 BenchmarkHonuObject-8      	  480555	      2362 ns/op
 ```
+
+[![Baseline Benchmarks](docs/benchmark.png)](docs/benchmark.png)
