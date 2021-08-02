@@ -1,5 +1,10 @@
 # Honu
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/rotationalio/honu.svg)](https://pkg.go.dev/github.com/rotationalio/honu)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rotationalio/honu)](https://goreportcard.com/report/github.com/rotationalio/honu)
+![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/build.yaml/badge.svg?branch=main)
+[![codecov](https://codecov.io/gh/rotationalio/honu/branch/main/graph/badge.svg?token=7RY96Cu5dx)](https://codecov.io/gh/rotationalio/honu)
+
 **A library for embedded database replication**
 
 ## Benchmarks

@@ -13,7 +13,7 @@ type DSN struct {
 	Path   string
 }
 
-// DSN Parsing and Handling
+// ParseDSN converts a database URI or URL string into a structured DSN representation.
 func ParseDSN(uri string) (_ *DSN, err error) {
 	dsn, err := url.Parse(uri)
 	if err != nil {

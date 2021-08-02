@@ -36,6 +36,9 @@ func NewVersionManager(conf config.ReplicaConfig) (v *VersionManager, err error)
 	return v, nil
 }
 
+// VersionManager is configured with information associated with the local Replica in
+// order to correctly implement Lamport clocks for sequential, conflict-free replicated
+// versions.
 type VersionManager struct {
 	PID    uint64
 	Owner  string

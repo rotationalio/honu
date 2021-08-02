@@ -65,7 +65,7 @@ func TestVersionManager(t *testing.T) {
 	// Create a new remote versioner
 	conf.PID = 13
 	conf.Region = "europe-west-3"
-	conf.Name = "jaques"
+	conf.Name = "jacques"
 	vers2, err := NewVersionManager(conf)
 	require.NoError(t, err)
 

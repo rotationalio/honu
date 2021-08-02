@@ -2,6 +2,9 @@ package config
 
 import "time"
 
+// ReplicaConfig specifies the information needed for a Replica and Version manager to
+// maintain global object versioning and provenance.
+// TODO: this configuration is pulled from a service context not a library context.
 type ReplicaConfig struct {
 	Enabled        bool          `split_words:"true" default:"true"`
 	BindAddr       string        `split_words:"true" default:":4435"`

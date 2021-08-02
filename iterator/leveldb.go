@@ -1,11 +1,13 @@
 package iterator
 
 import (
-	"github.com/golang/protobuf/proto"
 	pb "github.com/rotationalio/honu/proto/v1"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
+	"google.golang.org/protobuf/proto"
 )
 
+// NewLevelDBIterator creates a new iterator that wraps a leveldb Iterator with object
+// management access and Honu-specific serialization.
 func NewLevelDBIterator(iter iterator.Iterator) Iterator {
 	return &ldbIterator{ldb: iter}
 }

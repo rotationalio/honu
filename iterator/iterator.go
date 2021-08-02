@@ -13,6 +13,7 @@ import (
 	pb "github.com/rotationalio/honu/proto/v1"
 )
 
+// Standard iterator errors that may be returned for error type checking.
 var (
 	ErrIterReleased = errors.New("iterator has been released")
 )
@@ -27,7 +28,7 @@ type Iterator interface {
 	// It returns false if the iterator has been exhausted.
 	Next() bool
 
-	// Error returns any accumulated error. Exhuasting all rows or key/value pairs is
+	// Error returns any accumulated error. Exhausting all rows or key/value pairs is
 	// not considered to be an error.
 	Error() error
 
