@@ -1,0 +1,59 @@
+project_name: honu
+dist: dist
+builds:
+  # This is a library so no binary compilation is required
+  - skip: true
+
+# Publish the release on GitHub
+release:
+  # Repo in which the release will be created.
+  # Default is extracted from the origin remote URL or empty if its private hosted.
+  # Valid options are either github, gitlab or gitea
+  github:
+    owner: rotationalio
+    name: honu
+
+  # You can change the name of the release.
+  name_template: 'Honu v{{.Version}}'
+
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  # If set to true, will mark the release as not ready for production.
+  prerelease: auto
+
+  # Header for the release body.
+  header: |
+    [TODO: describe release]
+  # Footer for the release body.
+  footer: |
+    ### About
+    Honu is (currently) an experimental project that adds global versioning and
+    replication semantics to an embedded database such as leveldb. If you're interested
+    in this project, please see https://geodistributed.systems for more.
+  # If set to true, will not auto-publish the release.
+  disable: false
+
+changelog:
+  # Set it to true if you wish to skip the changelog generation.
+  skip: false
+
+  filters:
+    # Commit messages matching the regexp listed here will be removed from the changelog
+    exclude:
+      - (?i)typo
+      - (?i)^f$
+
+# Store signed source code with release
+source:
+  enabled: true
+  format: 'zip'
+  name_template: '{{ .ProjectName }}_v{{ .Version }}_source'
+
+# Used to validate if downloaded files are correct
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+signs:
+  - artifacts: checksum
+    args: ["--batch", "-u", "{{ .Env.GPG_FINGERPRINT }}", "--output", "${signature}", "--detach-sign", "${artifact}"]
