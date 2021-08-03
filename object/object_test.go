@@ -1,9 +1,9 @@
-package pb_test
+package object_test
 
 import (
 	"testing"
 
-	. "github.com/rotationalio/honu/proto/v1"
+	. "github.com/rotationalio/honu/object"
 	"github.com/stretchr/testify/require"
 )
 

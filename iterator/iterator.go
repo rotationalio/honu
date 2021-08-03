@@ -10,7 +10,7 @@ package iterator
 import (
 	"errors"
 
-	pb "github.com/rotationalio/honu/proto/v1"
+	pb "github.com/rotationalio/honu/object"
 )
 
 // Standard iterator errors that may be returned for error type checking.

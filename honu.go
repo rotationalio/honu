@@ -10,7 +10,7 @@ import (
 
 	"github.com/rotationalio/honu/config"
 	"github.com/rotationalio/honu/iterator"
-	pb "github.com/rotationalio/honu/proto/v1"
+	pb "github.com/rotationalio/honu/object"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"google.golang.org/protobuf/proto"

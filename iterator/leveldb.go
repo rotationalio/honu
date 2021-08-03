@@ -1,7 +1,7 @@
 package iterator
 
 import (
-	pb "github.com/rotationalio/honu/proto/v1"
+	pb "github.com/rotationalio/honu/object"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"google.golang.org/protobuf/proto"
 )

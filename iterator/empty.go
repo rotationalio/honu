@@ -1,6 +1,6 @@
 package iterator
 
-import pb "github.com/rotationalio/honu/proto/v1"
+import pb "github.com/rotationalio/honu/object"
 
 // NewEmptyIterator creates an empty iterator that returns nothing. The err parameter
 // can be nil, but if not nil the given err will be returned by the Error method.

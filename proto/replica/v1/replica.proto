@@ -1,7 +1,9 @@
 syntax = "proto3";
 
-package honu.v1;
-option go_package = "github.com/rotationalio/honu/proto/v1;pb";
+package honu.replica.v1;
+option go_package = "github.com/rotationalio/honu/replica";
+
+import "object/v1/object.proto";
 
 // The Replication Service implements a gossip-based anti-entropy protocol for
 // synchronizing replicas around the world. Honu expects total replication, meaning
@@ -35,7 +37,7 @@ service Replication {
 // namespaces are considered during Gossip.
 message VersionVectors {
     // Version vectors of objects without data.
-    repeated Object objects = 1;
+    repeated honu.object.v1.Object objects = 1;
 
     // A request to consider only the objects specified in the version vector and not
     // the entire namespace (e.g. ignore objects that are not specified).
@@ -50,38 +52,5 @@ message VersionVectors {
 // updates). Updates should only contain the objects that have later versions and the
 // objects should have their data fields populated.
 message Updates {
-    repeated Object objects = 1;
-}
-
-// An Object is a generic representation of a replicated piece of data. At the top level
-// it contains enough metadata in order to detect changes during anti-entropy,
-// specifically, given two objects, which is the later object (or does it need to be
-// created or deleted). When used in VersionVectors only the metadata of the object is
-// supplied. When passed via Updates, then the full data of the object is populated.
-//
-// For research purposes, this anti-entropy mechanism tracks the region and owner of
-// each object to determine provinence and global interactions. Because this is side
-// channel information that may not necessarily be stored with the object data, it is
-// recommended that an objects table be kept for fast lookups of object versions.
-// Additionally, it is recommended that a history table be maintained locally so that
-// Object versions can be rolled back to previous states where necessary.
-message Object {
-    // The object metadata that must be populated on both VersionVectors and Updates
-    bytes key = 1;            // A unique key/id that represents the object across the namespace of the object type
-    string namespace = 2;     // The namespace of the object, used to disambiguate keys or different object types
-    Version version = 3;      // A version vector representing this objects current or latest version
-    string region = 4;        // The region code where the data originated
-    string owner = 5;         // The replica that created the object (identified as "pid:name" if name exists)
-
-    // The object data that is only populated on Updates.
-    bytes data = 10;
-}
-
-// Implements a geo-distributed version as a Lamport Scalar
-message Version {
-    uint64 pid = 1;           // Process ID - used to deconflict ties in the version number.
-    uint64 version = 2;       // Montonically increasing version number.
-    string region = 3;        // The region where the change occurred to track multi-region handling.
-    Version parent = 4;       // In order to get a complete version history, identify the predessor; for compact data transfer parent should not be defined in parent version.
-    bool tombstone = 5;       // Set to true in order to mark the object as deleted
+    repeated honu.object.v1.Object objects = 1;
 }

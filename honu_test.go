@@ -10,7 +10,7 @@ import (
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
-	pb "github.com/rotationalio/honu/proto/v1"
+	pb "github.com/rotationalio/honu/object"
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
 )

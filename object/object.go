@@ -1,4 +1,4 @@
-package pb
+package object
 
 // Tombstone returns true if the version of the object is a Tombstone (for a deleted object)
 func (o *Object) Tombstone() bool {
