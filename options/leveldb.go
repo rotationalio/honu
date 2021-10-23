@@ -9,7 +9,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
-func CreateReadOption(optionString string) (*opt.ReadOptions, error) {
+func CreateLeveldbReadOption(optionString string) (*opt.ReadOptions, error) {
 	options, err := parseOptionString(optionString)
 	if err != nil {
 		return nil, err
@@ -18,15 +18,8 @@ func CreateReadOption(optionString string) (*opt.ReadOptions, error) {
 	for _, option := range options {
 		switch field := option.field; field {
 		case "DontFillCache":
-			value := strings.ToLower(option.value)
-			if value == "true" {
-				returnOption.DontFillCache = true
-			} else if value == "false" {
-				returnOption.DontFillCache = false
-				return nil, errors.New("")
-			} else {
-				errString := fmt.Sprintf("%s is not a valid setting for the DontFillCache option", value)
-				err = errors.New(errString)
+			returnOption.DontFillCache, err = setBoolOption(option.value, option.field)
+			if err != nil {
 				return nil, err
 			}
 		case "strict":
@@ -45,6 +38,42 @@ func CreateReadOption(optionString string) (*opt.ReadOptions, error) {
 	return &returnOption, nil
 }
 
-func CreateWriteOption(optionString string) (*opt.WriteOptions, error) {
-	return nil, nil
+func CreateLeveldbWriteOption(optionString string) (*opt.WriteOptions, error) {
+	options, err := parseOptionString(optionString)
+	if err != nil {
+		return nil, err
+	}
+	returnOption := opt.WriteOptions{}
+	for _, option := range options {
+		switch field := option.field; field {
+		case "NoWriteMerge":
+			returnOption.NoWriteMerge, err = setBoolOption(option.value, option.field)
+			if err != nil {
+				return nil, err
+			}
+		case "Sync":
+			returnOption.Sync, err = setBoolOption(option.value, option.field)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			errString := fmt.Sprintf("%s is not a valid leveldb writeoption", option.field)
+			err = errors.New(errString)
+			return nil, err
+		}
+	}
+	return &returnOption, nil
+}
+
+func setBoolOption(boolString string, optionString string) (bool, error) {
+	value := strings.ToLower(boolString)
+	if value == "true" {
+		return true, nil
+	} else if value == "false" {
+		return false, nil
+	} else {
+		errString := fmt.Sprintf("%s is not a valid setting for the %s option", value, optionString)
+		err := errors.New(errString)
+		return false, err
+	}
 }
