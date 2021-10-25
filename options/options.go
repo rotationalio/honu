@@ -2,6 +2,7 @@ package options
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -9,26 +10,6 @@ type option struct {
 	field string
 	value string
 }
-
-/* func CheckOptions(option Option) (*Option, error) {
-	optType := reflect.ValueOf(option.optionObject)
-	readOpts, err := parseOptionString(option)
-	if err != nil {
-		print(err)
-		return nil, err
-	}
-	for _, possibleOpt := range readOpts {
-		checkField := optType.Elem().FieldByName(possibleOpt)
-		if !checkField.IsValid() {
-			errorString := fmt.Sprintf("%s is not a valid option", possibleOpt)
-			err = errors.New(errorString)
-			return nil, err
-		} else {
-			optType
-		}
-	}
-	return &option, nil
-} */
 
 func parseOptionString(optionString string) ([]option, error) {
 	parsedOptionString := strings.FieldsFunc(optionString, splitOptionString)
@@ -48,4 +29,17 @@ func parseOptionString(optionString string) ([]option, error) {
 
 func splitOptionString(char rune) bool {
 	return char == ',' || char == ' '
+}
+
+func setBoolOption(boolString string, optionString string) (bool, error) {
+	value := strings.ToLower(boolString)
+	if value == "true" {
+		return true, nil
+	} else if value == "false" {
+		return false, nil
+	} else {
+		errString := fmt.Sprintf("%s is not a valid setting for the %s option", value, optionString)
+		err := errors.New(errString)
+		return false, err
+	}
 }

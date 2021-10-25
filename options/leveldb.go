@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
@@ -63,17 +62,4 @@ func CreateLeveldbWriteOption(optionString string) (*opt.WriteOptions, error) {
 		}
 	}
 	return &returnOption, nil
-}
-
-func setBoolOption(boolString string, optionString string) (bool, error) {
-	value := strings.ToLower(boolString)
-	if value == "true" {
-		return true, nil
-	} else if value == "false" {
-		return false, nil
-	} else {
-		errString := fmt.Sprintf("%s is not a valid setting for the %s option", value, optionString)
-		err := errors.New(errString)
-		return false, err
-	}
 }
