@@ -11,6 +11,7 @@ import (
 	"github.com/rotationalio/honu/config"
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
+	opt "github.com/rotationalio/honu/options"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"google.golang.org/protobuf/proto"
@@ -58,9 +59,13 @@ func (d *DB) Close() error {
 
 // Get the latest version of the object stored by the key.
 // TODO: provide read options to the underlying database.
-func (d *DB) Get(key []byte) (value []byte, err error) {
+func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
 	// Fetch the value from the database
-	if value, err = d.ldb.Get(key, nil); err != nil {
+	readOptions, err := opt.CreateLeveldbReadOption(options)
+	if err != nil {
+		return nil, err
+	}
+	if value, err = d.ldb.Get(key, readOptions); err != nil {
 		// TODO: should we wrap the leveldb error?
 		return nil, err
 	}
@@ -84,7 +89,7 @@ func (d *DB) Get(key []byte) (value []byte, err error) {
 
 // Put a new value to the specified key and update the version.
 // TODO: provide write options to the underlying database.
-func (d *DB) Put(key, value []byte) (err error) {
+func (d *DB) Put(key, value []byte, options *string) (err error) {
 	// Get or Create the previous version
 	var data []byte
 	var obj *pb.Object

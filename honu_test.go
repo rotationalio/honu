@@ -63,11 +63,11 @@ func TestLevelDBInteractions(t *testing.T) {
 	defer db.Close()
 
 	// Put a version to the database
-	err = db.Put([]byte("foo"), []byte("this is the value of foo"))
+	err = db.Put([]byte("foo"), []byte("this is the value of foo"), nil)
 	require.NoError(t, err)
 
 	// Get the version of foo from the database
-	value, err := db.Get([]byte("foo"))
+	value, err := db.Get([]byte("foo"), nil)
 	require.NoError(t, err)
 	require.Equal(t, []byte("this is the value of foo"), value)
 
@@ -81,7 +81,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should not be able to get the deleted version
-	value, err = db.Get([]byte("foo"))
+	value, err = db.Get([]byte("foo"), nil)
 	require.Error(t, err)
 	require.Empty(t, value)
 
@@ -93,10 +93,10 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.Empty(t, obj.Data)
 
 	// Be able to "undelete" a tombstone
-	err = db.Put([]byte("foo"), []byte("this is the undead foo"))
+	err = db.Put([]byte("foo"), []byte("this is the undead foo"), nil)
 	require.NoError(t, err)
 
-	value, err = db.Get([]byte("foo"))
+	value, err = db.Get([]byte("foo"), nil)
 	require.NoError(t, err)
 	require.Equal(t, []byte("this is the undead foo"), value)
 
@@ -107,13 +107,13 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.False(t, obj.Tombstone())
 
 	// Put a range of data into the database
-	require.NoError(t, db.Put([]byte("aa"), []byte("123456")))
-	require.NoError(t, db.Put([]byte("ab"), []byte("7890123")))
-	require.NoError(t, db.Put([]byte("ba"), []byte("4567890")))
-	require.NoError(t, db.Put([]byte("bb"), []byte("1234567")))
-	require.NoError(t, db.Put([]byte("bc"), []byte("9012345")))
-	require.NoError(t, db.Put([]byte("ca"), []byte("67890123")))
-	require.NoError(t, db.Put([]byte("cb"), []byte("4567890123")))
+	require.NoError(t, db.Put([]byte("aa"), []byte("123456"), nil))
+	require.NoError(t, db.Put([]byte("ab"), []byte("7890123"), nil))
+	require.NoError(t, db.Put([]byte("ba"), []byte("4567890"), nil))
+	require.NoError(t, db.Put([]byte("bb"), []byte("1234567"), nil))
+	require.NoError(t, db.Put([]byte("bc"), []byte("9012345"), nil))
+	require.NoError(t, db.Put([]byte("ca"), []byte("67890123"), nil))
+	require.NoError(t, db.Put([]byte("cb"), []byte("4567890123"), nil))
 
 	// Iterate over a prefix in the database
 	iter, err := db.Iter([]byte("b"))
@@ -164,12 +164,12 @@ func BenchmarkHonuGet(b *testing.B) {
 	_, err = rand.Read(value)
 	require.NoError(b, err)
 
-	require.NoError(b, db.Put(key, value))
+	require.NoError(b, db.Put(key, value, nil))
 
 	// Reset the timer to focus only on the get call
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gValue, gErr = db.Get(key)
+		gValue, gErr = db.Get(key, nil)
 	}
 
 	require.NoError(b, gErr)
@@ -227,7 +227,7 @@ func BenchmarkHonuPut(b *testing.B) {
 	// Reset the timer to focus only on the get call
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gErr = db.Put(key, value)
+		gErr = db.Put(key, value, nil)
 	}
 
 	require.NoError(b, gErr)
@@ -282,7 +282,7 @@ func BenchmarkHonuDelete(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
-		require.NoError(b, db.Put(key, value))
+		require.NoError(b, db.Put(key, value, nil))
 		b.StartTimer()
 		gErr = db.Delete(key)
 	}
@@ -338,7 +338,7 @@ func BenchmarkHonuIter(b *testing.B) {
 		_, err = rand.Read(value)
 		require.NoError(b, err)
 
-		require.NoError(b, db.Put([]byte(key), value))
+		require.NoError(b, db.Put([]byte(key), value, nil))
 	}
 
 	// Reset the timer to focus only on the get call
@@ -418,7 +418,7 @@ func BenchmarkHonuObject(b *testing.B) {
 	_, err = rand.Read(value)
 	require.NoError(b, err)
 
-	require.NoError(b, db.Put(key, value))
+	require.NoError(b, db.Put(key, value, nil))
 
 	// Reset the timer to focus only on the get call
 	b.ResetTimer()

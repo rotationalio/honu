@@ -8,8 +8,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
-func CreateLeveldbReadOption(optionString string) (*opt.ReadOptions, error) {
-	options, err := parseOptionString(optionString)
+func CreateLeveldbReadOption(optionString *string) (*opt.ReadOptions, error) {
+	if optionString == nil {
+		return nil, nil
+	}
+	options, err := parseOptionString(*optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +40,11 @@ func CreateLeveldbReadOption(optionString string) (*opt.ReadOptions, error) {
 	return &returnOption, nil
 }
 
-func CreateLeveldbWriteOption(optionString string) (*opt.WriteOptions, error) {
-	options, err := parseOptionString(optionString)
+func CreateLeveldbWriteOption(optionString *string) (*opt.WriteOptions, error) {
+	if optionString == nil {
+		return nil, nil
+	}
+	options, err := parseOptionString(*optionString)
 	if err != nil {
 		return nil, err
 	}

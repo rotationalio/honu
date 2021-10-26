@@ -7,22 +7,11 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-func CreatePebbleOptions(optionString string) (*pebble.Options, error) {
-	options, err := parseOptionString(optionString)
-	if err != nil {
-		return nil, err
+func CreatePebbleWriteOptions(optionString *string) (*pebble.WriteOptions, error) {
+	if optionString == nil {
+		return nil, nil
 	}
-	returnOption := pebble.Options{}
-	for _, option := range options {
-		switch field := option.field; field {
-		// TODO: Impliment generic options
-		}
-	}
-	return &returnOption, nil
-}
-
-func CreatePebbleWriteOptions(optionString string) (*pebble.WriteOptions, error) {
-	options, err := parseOptionString(optionString)
+	options, err := parseOptionString(*optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +32,15 @@ func CreatePebbleWriteOptions(optionString string) (*pebble.WriteOptions, error)
 	return &returnOption, nil
 }
 
-func CreatePebbleIterOptions(optionString string) (*pebble.WriteOptions, error) {
-	options, err := parseOptionString(optionString)
+func CreatePebbleIterOptions(optionString *string) (*pebble.IterOptions, error) {
+	if optionString == nil {
+		return nil, nil
+	}
+	options, err := parseOptionString(*optionString)
 	if err != nil {
 		return nil, err
 	}
-	returnOption := pebble.WriteOptions{}
+	returnOption := pebble.IterOptions{}
 	for _, option := range options {
 		switch field := option.field; field {
 		// TODO: Impliment iteration options
