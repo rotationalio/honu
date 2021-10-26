@@ -31,3 +31,14 @@ func (v *Version) IsLater(other *Version) bool {
 	// Either v.Version < other.Version or other.Pid > v.Pid
 	return false
 }
+
+//Copies the child's attributes before updating to the parent.
+func (v *Version) Clone() *Version {
+	parent := &Version{
+		Pid:       v.Pid,
+		Version:   v.Version,
+		Region:    v.Region,
+		Tombstone: v.Tombstone,
+	}
+	return parent
+}
