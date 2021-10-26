@@ -1,6 +1,7 @@
-package iterator
+package leveldb
 
 import (
+	honuiter "github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"google.golang.org/protobuf/proto"
@@ -8,7 +9,7 @@ import (
 
 // NewLevelDBIterator creates a new iterator that wraps a leveldb Iterator with object
 // management access and Honu-specific serialization.
-func NewLevelDBIterator(iter iterator.Iterator) Iterator {
+func NewLevelDBIterator(iter iterator.Iterator) honuiter.Iterator {
 	return &ldbIterator{ldb: iter}
 }
 
@@ -18,7 +19,7 @@ type ldbIterator struct {
 }
 
 // Type check for the ldbIterator
-var _ Iterator = &ldbIterator{}
+var _ honuiter.Iterator = &ldbIterator{}
 
 func (i *ldbIterator) Next() bool   { return i.ldb.Next() }
 func (i *ldbIterator) Prev() bool   { return i.ldb.Prev() }
