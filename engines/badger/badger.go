@@ -1,9 +1,13 @@
 package badger
 
-import "github.com/rotationalio/honu/config"
+import (
+	"errors"
+
+	"github.com/rotationalio/honu/config"
+)
 
 func Open(conf config.ReplicaConfig) (*BadgerEngine, error) {
-	return &BadgerEngine{}, nil
+	return &BadgerEngine{}, errors.New("not implemented yet")
 }
 
 type BadgerEngine struct{}
@@ -13,5 +17,5 @@ func (db *BadgerEngine) Engine() string {
 }
 
 func (db *BadgerEngine) Close() error {
-	return nil
+	return errors.New("not implemented yet")
 }

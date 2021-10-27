@@ -27,7 +27,7 @@ func (d *LevelDBEngine) Engine() string {
 }
 
 func (d *LevelDBEngine) Close() error {
-	return nil
+	return d.ldb.Close()
 }
 
 // Get the latest version of the object stored by the key.

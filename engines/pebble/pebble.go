@@ -1,9 +1,13 @@
 package pebble
 
-import "github.com/rotationalio/honu/config"
+import (
+	"errors"
+
+	"github.com/rotationalio/honu/config"
+)
 
 func Open(conf config.ReplicaConfig) (*PebbleEngine, error) {
-	return &PebbleEngine{}, nil
+	return &PebbleEngine{}, errors.New("not implemented yet")
 }
 
 type PebbleEngine struct{}
@@ -13,5 +17,5 @@ func (db *PebbleEngine) Engine() string {
 }
 
 func (db *PebbleEngine) Close() error {
-	return nil
+	return errors.New("not implemented yet")
 }
