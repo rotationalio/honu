@@ -7,11 +7,19 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-func CreatePebbleWriteOptions(optionString *string) (*pebble.WriteOptions, error) {
+type pebbleOptions struct{}
+
+func (p *pebbleOptions) Read(optionString *string) error {
+	errorString := fmt.Sprintf("Pebble does not support readoptions")
+	err := errors.New(errorString)
+	return err
+}
+
+func (p *pebbleOptions) Write(optionString *string) (*pebble.WriteOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}
-	options, err := parseOptionString(*optionString)
+	options, err := parse(*optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -19,7 +27,7 @@ func CreatePebbleWriteOptions(optionString *string) (*pebble.WriteOptions, error
 	for _, option := range options {
 		switch field := option.field; field {
 		case "Sync":
-			returnOption.Sync, err = setBoolOption(option.value, option.field)
+			returnOption.Sync, err = set(option.value, option.field)
 			if err != nil {
 				return nil, err
 			}
@@ -27,23 +35,6 @@ func CreatePebbleWriteOptions(optionString *string) (*pebble.WriteOptions, error
 			errString := fmt.Sprintf("%s is not a valid pebble writeoption", option.field)
 			err = errors.New(errString)
 			return nil, err
-		}
-	}
-	return &returnOption, nil
-}
-
-func CreatePebbleIterOptions(optionString *string) (*pebble.IterOptions, error) {
-	if optionString == nil {
-		return nil, nil
-	}
-	options, err := parseOptionString(*optionString)
-	if err != nil {
-		return nil, err
-	}
-	returnOption := pebble.IterOptions{}
-	for _, option := range options {
-		switch field := option.field; field {
-		// TODO: Impliment iteration options
 		}
 	}
 	return &returnOption, nil

@@ -8,11 +8,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
-func CreateLeveldbReadOption(optionString *string) (*opt.ReadOptions, error) {
+type ldbOptions struct{}
+
+func (ldb *ldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}
-	options, err := parseOptionString(*optionString)
+	options, err := parse(*optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +22,7 @@ func CreateLeveldbReadOption(optionString *string) (*opt.ReadOptions, error) {
 	for _, option := range options {
 		switch field := option.field; field {
 		case "DontFillCache":
-			returnOption.DontFillCache, err = setBoolOption(option.value, option.field)
+			returnOption.DontFillCache, err = set(option.value, option.field)
 			if err != nil {
 				return nil, err
 			}
@@ -40,11 +42,11 @@ func CreateLeveldbReadOption(optionString *string) (*opt.ReadOptions, error) {
 	return &returnOption, nil
 }
 
-func CreateLeveldbWriteOption(optionString *string) (*opt.WriteOptions, error) {
+func (ldb *ldbOptions) Write(optionString *string) (*opt.WriteOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}
-	options, err := parseOptionString(*optionString)
+	options, err := parse(*optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +54,12 @@ func CreateLeveldbWriteOption(optionString *string) (*opt.WriteOptions, error) {
 	for _, option := range options {
 		switch field := option.field; field {
 		case "NoWriteMerge":
-			returnOption.NoWriteMerge, err = setBoolOption(option.value, option.field)
+			returnOption.NoWriteMerge, err = set(option.value, option.field)
 			if err != nil {
 				return nil, err
 			}
 		case "Sync":
-			returnOption.Sync, err = setBoolOption(option.value, option.field)
+			returnOption.Sync, err = set(option.value, option.field)
 			if err != nil {
 				return nil, err
 			}
