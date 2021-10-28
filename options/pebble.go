@@ -7,15 +7,9 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-type pebbleOptions struct{}
+type PebbleOptions struct{}
 
-func (p *pebbleOptions) Read(optionString *string) error {
-	errorString := fmt.Sprintf("Pebble does not support readoptions")
-	err := errors.New(errorString)
-	return err
-}
-
-func (p *pebbleOptions) Write(optionString *string) (*pebble.WriteOptions, error) {
+func (p PebbleOptions) Write(optionString *string) (*pebble.WriteOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}

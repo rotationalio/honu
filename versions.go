@@ -54,7 +54,7 @@ func (v VersionManager) Update(meta *pb.Object) error {
 
 	// Update the parent to the current version of the object.
 	if meta.Version != nil && !meta.Version.IsZero() {
-		meta.Version.Parent = create_version_parent(meta)
+		meta.Version.Parent = meta.Version.Clone()
 	} else {
 		// This is the first version of the object. Also set provenance on the object.
 		meta.Version = &pb.Version{}
@@ -64,7 +64,7 @@ func (v VersionManager) Update(meta *pb.Object) error {
 
 	// Update the version to the new version of the local version manager,
 	// Undelete the version if it was a Tombstone before
-	update_version(meta, v, false)
+	v.updateVersion(meta, false)
 	return nil
 }
 
@@ -83,26 +83,15 @@ func (v VersionManager) Delete(meta *pb.Object) error {
 	if meta.Version.Tombstone {
 		return errors.New("cannot delete an already deleted object")
 	}
-	meta.Version.Parent = create_version_parent(meta)
+	meta.Version.Parent = meta.Version.Clone()
 
 	//Update Pid, Version, Region and Tombstone for the version.
-	update_version(meta, v, true)
+	v.updateVersion(meta, true)
 	return nil
 }
 
-//Copies the child's attributes before updating to the parent.
-func create_version_parent(meta *pb.Object) *pb.Version {
-	parent := &pb.Version{
-		Pid:       meta.Version.Pid,
-		Version:   meta.Version.Version,
-		Region:    meta.Version.Region,
-		Tombstone: meta.Version.Tombstone,
-	}
-	return parent
-}
-
-//Assigns the attributes of the passed vertionManager to the object.
-func update_version(meta *pb.Object, v VersionManager, delete_version bool) {
+//Assigns the attributes of the passed versionManager to the object.
+func (v VersionManager) updateVersion(meta *pb.Object, delete_version bool) {
 	meta.Version.Pid = v.PID
 	meta.Version.Version++
 	meta.Version.Region = v.Region

@@ -8,9 +8,9 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
-type ldbOptions struct{}
+type LeveldbOptions struct{}
 
-func (ldb *ldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
+func (ldb LeveldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func (ldb *ldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
 	return &returnOption, nil
 }
 
-func (ldb *ldbOptions) Write(optionString *string) (*opt.WriteOptions, error) {
+func (ldb LeveldbOptions) Write(optionString *string) (*opt.WriteOptions, error) {
 	if optionString == nil {
 		return nil, nil
 	}

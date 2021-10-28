@@ -9,19 +9,20 @@ import (
 	"fmt"
 
 	"github.com/rotationalio/honu/config"
+	engine "github.com/rotationalio/honu/engines"
+	"github.com/rotationalio/honu/engines/badger"
+	"github.com/rotationalio/honu/engines/leveldb"
+	"github.com/rotationalio/honu/engines/pebble"
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
-	opt "github.com/rotationalio/honu/options"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"google.golang.org/protobuf/proto"
 )
 
 // DB is a Honu embedded database.
 // Currently DB simply wraps a leveldb database
 type DB struct {
-	ldb *leveldb.DB
-	vm  *VersionManager
+	engine engine.Engine
+	vm     *VersionManager
 }
 
 // Open a replicated embedded database with the specified URI. Database URIs should
@@ -33,40 +34,50 @@ func Open(uri string, conf config.ReplicaConfig) (db *DB, err error) {
 		return nil, err
 	}
 
+	db = &DB{}
+	if db.vm, err = NewVersionManager(conf); err != nil {
+		return nil, err
+	}
+
 	switch dsn.Scheme {
 	case "leveldb":
 		// TODO: allow leveldb options to be passed to OpenFile
 		// TODO: multiple leveldb databases for different namespaces
-		db = &DB{}
-		if db.ldb, err = leveldb.OpenFile(dsn.Path, nil); err != nil {
+		if db.engine, err = leveldb.Open(dsn.Path, conf); err != nil {
 			return nil, err
 		}
-		if db.vm, err = NewVersionManager(conf); err != nil {
+	case "badger", "badgerdb":
+		if db.engine, err = badger.Open(conf); err != nil {
 			return nil, err
 		}
-		return db, nil
-	case "sqlite", "sqlite3":
-		return nil, errors.New("sqlite support is currently not implemented")
+	case "pebble", "pebbledb":
+		if db.engine, err = pebble.Open(conf); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unhandled database scheme %q", dsn.Scheme)
 	}
+
+	return db, nil
 }
 
 // Close the database, allowing no further interactions.
 func (d *DB) Close() error {
-	return d.ldb.Close()
+	return d.engine.Close()
 }
 
 // Get the latest version of the object stored by the key.
 // TODO: provide read options to the underlying database.
 func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
-	// Fetch the value from the database
-	readOptions, err := opt.CreateLeveldbReadOption(options)
-	if err != nil {
-		return nil, err
+	// TODO: refactor this into an options slice for faster checking
+	store, ok := d.engine.(engine.Store)
+	if !ok {
+		return nil, errors.New("underlying engine doesn't support Get accesses")
 	}
-	if value, err = d.ldb.Get(key, readOptions); err != nil {
-		// TODO: should we wrap the leveldb error?
+
+	// Fetch the value from the database
+	if value, err = store.Get(key, options); err != nil {
+		// TODO: wrap the engine error in standard honu errors?
 		return nil, err
 	}
 
@@ -79,7 +90,8 @@ func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
 
 	if obj.Tombstone() {
 		// The object is deleted, so return not found
-		return nil, leveldb.ErrNotFound
+		// TODO: standardize error messages
+		return nil, engine.ErrNotFound
 	}
 
 	// Return the wrapped data
@@ -90,11 +102,17 @@ func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
 // Put a new value to the specified key and update the version.
 // TODO: provide write options to the underlying database.
 func (d *DB) Put(key, value []byte, options *string) (err error) {
+	// TODO: refactor this into an options slice for faster checking
+	store, ok := d.engine.(engine.Store)
+	if !ok {
+		return errors.New("underlying engine doesn't support Put accesses")
+	}
+
 	// Get or Create the previous version
 	var data []byte
 	var obj *pb.Object
-	if data, err = d.ldb.Get(key, nil); err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
+	if data, err = store.Get(key, options); err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
 			obj = &pb.Object{
 				Key:       key,
 				Namespace: "default",
@@ -119,7 +137,7 @@ func (d *DB) Put(key, value []byte, options *string) (err error) {
 	if data, err = proto.Marshal(obj); err != nil {
 		return err
 	}
-	if err = d.ldb.Put(key, data, nil); err != nil {
+	if err = store.Put(key, data, options); err != nil {
 		return err
 	}
 
@@ -128,10 +146,16 @@ func (d *DB) Put(key, value []byte, options *string) (err error) {
 
 // Delete the object represented by the key, creating a tombstone object.
 // TODO: provide write options to the underlying database.
-func (d *DB) Delete(key []byte) (err error) {
+func (d *DB) Delete(key []byte, options *string) (err error) {
+	// TODO: refactor this into an options slice for faster checking
+	store, ok := d.engine.(engine.Store)
+	if !ok {
+		return errors.New("underlying engine doesn't support Delete accesses")
+	}
+
 	var data []byte
-	if data, err = d.ldb.Get(key, nil); err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
+	if data, err = store.Get(key, options); err != nil {
+		if errors.Is(err, engine.ErrNotFound) {
 			return nil
 		}
 		return err
@@ -155,7 +179,8 @@ func (d *DB) Delete(key []byte) (err error) {
 	if data, err = proto.Marshal(obj); err != nil {
 		return err
 	}
-	if err = d.ldb.Put(key, data, nil); err != nil {
+	// TODO allow writeoptions to be passed to this put
+	if err = store.Put(key, data, nil); err != nil {
 		return err
 	}
 	return nil
@@ -164,18 +189,25 @@ func (d *DB) Delete(key []byte) (err error) {
 // Iter over a subset of keys specified by the prefix.
 // TODO: provide better mechanisms for iteration.
 func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
-	var slice *util.Range
-	if len(prefix) > 0 {
-		slice = util.BytesPrefix(prefix)
+	// TODO: refactor this into an options slice for faster checking
+	iter, ok := d.engine.(engine.Iterator)
+	if !ok {
+		return nil, errors.New("underlying engine doesn't support Iter accesses")
 	}
-	return iterator.NewLevelDBIterator(d.ldb.NewIterator(slice, nil)), nil
+	return iter.Iter(prefix)
 }
 
 // Object returns metadata associated with the latest object stored by the key.
-func (d *DB) Object(key []byte) (_ *pb.Object, err error) {
+func (d *DB) Object(key []byte, options *string) (_ *pb.Object, err error) {
+	// TODO: refactor this into an options slice for faster checking
+	store, ok := d.engine.(engine.Store)
+	if !ok {
+		return nil, errors.New("underlying engine doesn't support Object accesses")
+	}
+
 	// Fetch the value from the database
 	var value []byte
-	if value, err = d.ldb.Get(key, nil); err != nil {
+	if value, err = store.Get(key, options); err != nil {
 		// TODO: should we wrap the leveldb error?
 		return nil, err
 	}

@@ -6,16 +6,6 @@ import (
 	"strings"
 )
 
-type Options struct {
-	ldb    ldbOptions
-	pebble pebbleOptions
-}
-
-type dbOptions interface {
-	Read()
-	Write()
-}
-
 type option struct {
 	field string
 	value string

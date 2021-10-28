@@ -72,12 +72,12 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.Equal(t, []byte("this is the value of foo"), value)
 
 	// Get the meta data from foo
-	obj, err := db.Object([]byte("foo"))
+	obj, err := db.Object([]byte("foo"), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), obj.Version.Version)
 
 	// Delete the version from the database
-	err = db.Delete([]byte("foo"))
+	err = db.Delete([]byte("foo"), nil)
 	require.NoError(t, err)
 
 	// Should not be able to get the deleted version
@@ -86,7 +86,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.Empty(t, value)
 
 	// Get the tombstone from the database
-	obj, err = db.Object([]byte("foo"))
+	obj, err = db.Object([]byte("foo"), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), obj.Version.Version)
 	require.True(t, obj.Tombstone())
@@ -101,7 +101,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	require.Equal(t, []byte("this is the undead foo"), value)
 
 	// Get the tombstone from the database
-	obj, err = db.Object([]byte("foo"))
+	obj, err = db.Object([]byte("foo"), nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), obj.Version.Version)
 	require.False(t, obj.Tombstone())
@@ -284,7 +284,7 @@ func BenchmarkHonuDelete(b *testing.B) {
 		b.StopTimer()
 		require.NoError(b, db.Put(key, value, nil))
 		b.StartTimer()
-		gErr = db.Delete(key)
+		gErr = db.Delete(key, nil)
 	}
 
 	require.NoError(b, gErr)
@@ -423,7 +423,7 @@ func BenchmarkHonuObject(b *testing.B) {
 	// Reset the timer to focus only on the get call
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gObj, gErr = db.Object(key)
+		gObj, gErr = db.Object(key, nil)
 	}
 
 	require.NoError(b, gErr)
