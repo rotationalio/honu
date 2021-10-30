@@ -15,10 +15,11 @@ func parse(optionString string) ([]option, error) {
 	parsed := strings.FieldsFunc(optionString, split)
 	err := len(parsed)%2 != 0
 	if err {
+		//TODO: think of a better error string to return
 		return nil, errors.New("improperly formated option string")
 	}
 	optionList := []option{}
-	for i := 0; i < len(parsed)-1; i++ {
+	for i := 0; i < len(parsed)-1; i = i + 2 {
 		field := parsed[i]
 		value := parsed[i+1]
 		parsedOption := option{field, value}

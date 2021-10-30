@@ -26,7 +26,7 @@ func (ldb LeveldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
 			if err != nil {
 				return nil, err
 			}
-		case "strict":
+		case "Strict":
 			strictInt, err := strconv.Atoi(option.value)
 			if err != nil {
 				return nil, err
