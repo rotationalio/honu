@@ -7,11 +7,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//Test to ensure that the correct error is thrown when an improperly
+//formated error string is passed to options.parse()
 func TestInvalidParseOptions(t *testing.T) {
+	expectedErrorString := "improperly formated option string"
 	ldbOptions := options.LeveldbOptions{}
+
 	options := "SingleElementOptionString"
 	_, err := ldbOptions.Write(&options)
-	require.Error(t, err, "improperly formated option string")
+	require.Error(t, err, expectedErrorString)
+
+	options = "Error String Without Comma"
+	_, err = ldbOptions.Read(&options)
+	require.Error(t, err, expectedErrorString)
 }
 
 func TestLevelDBReadOptions(t *testing.T) {
