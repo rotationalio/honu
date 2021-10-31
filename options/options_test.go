@@ -1,6 +1,7 @@
 package options_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/rotationalio/honu/options"
@@ -10,16 +11,16 @@ import (
 //Test to ensure that the correct error is thrown when an improperly
 //formated error string is passed to options.parse()
 func TestInvalidParseOptions(t *testing.T) {
-	expectedErrorString := "improperly formated option string"
+	expectedError := errors.New("improperly formated option string")
 	ldbOptions := options.LeveldbOptions{}
 
 	options := "SingleElementOptionString"
 	_, err := ldbOptions.Write(&options)
-	require.Error(t, err, expectedErrorString)
+	require.Equal(t, err, expectedError)
 
 	options = "Error String Without Comma"
 	_, err = ldbOptions.Read(&options)
-	require.Error(t, err, expectedErrorString)
+	require.Equal(t, err, expectedError)
 }
 
 func TestLevelDBReadOptions(t *testing.T) {
