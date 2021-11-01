@@ -32,7 +32,7 @@ func TestLevelDBReadOptions(t *testing.T) {
 	require.True(t, readOptions.DontFillCache)
 
 	options = "foo true"
-	_, err = ldbOptions.Write(options)
+	_, err = ldbOptions.Read(options)
 	require.Error(t, err, "foo is not a valid leveldb readoption")
 }
 
