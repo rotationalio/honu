@@ -18,7 +18,7 @@ func parse(optionString string) ([]option, error) {
 	optionSlice := []option{}
 	optionPairs := strings.Split(optionString, ",")
 	for _, optionPair := range optionPairs {
-		//Handle whitespace after a comma by trimming.
+		//Handle whitespace around a comma by trimming.
 		optionPair = strings.TrimSpace(optionPair)
 		options := strings.Split(optionPair, " ")
 		if len(options) != 2 {

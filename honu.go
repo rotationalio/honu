@@ -68,7 +68,7 @@ func (d *DB) Close() error {
 
 // Get the latest version of the object stored by the key.
 // TODO: provide read options to the underlying database.
-func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
+func (d *DB) Get(key []byte, options string) (value []byte, err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -101,7 +101,7 @@ func (d *DB) Get(key []byte, options *string) (value []byte, err error) {
 
 // Put a new value to the specified key and update the version.
 // TODO: provide write options to the underlying database.
-func (d *DB) Put(key, value []byte, options *string) (err error) {
+func (d *DB) Put(key, value []byte, options string) (err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -146,7 +146,7 @@ func (d *DB) Put(key, value []byte, options *string) (err error) {
 
 // Delete the object represented by the key, creating a tombstone object.
 // TODO: provide write options to the underlying database.
-func (d *DB) Delete(key []byte, options *string) (err error) {
+func (d *DB) Delete(key []byte, options string) (err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -180,7 +180,7 @@ func (d *DB) Delete(key []byte, options *string) (err error) {
 		return err
 	}
 	// TODO allow writeoptions to be passed to this put
-	if err = store.Put(key, data, nil); err != nil {
+	if err = store.Put(key, data, ""); err != nil {
 		return err
 	}
 	return nil
@@ -198,7 +198,7 @@ func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
 }
 
 // Object returns metadata associated with the latest object stored by the key.
-func (d *DB) Object(key []byte, options *string) (_ *pb.Object, err error) {
+func (d *DB) Object(key []byte, options string) (_ *pb.Object, err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {

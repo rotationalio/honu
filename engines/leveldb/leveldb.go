@@ -32,7 +32,7 @@ func (d *LevelDBEngine) Close() error {
 }
 
 // Get the latest version of the object stored by the key.
-func (d *LevelDBEngine) Get(key []byte, options *string) (value []byte, err error) {
+func (d *LevelDBEngine) Get(key []byte, options string) (value []byte, err error) {
 	opts := opts.LeveldbOptions{}
 	readOptions, err := opts.Read(options)
 	if err != nil {
@@ -45,7 +45,7 @@ func (d *LevelDBEngine) Get(key []byte, options *string) (value []byte, err erro
 }
 
 // Put a new value to the specified key and update the version.
-func (d *LevelDBEngine) Put(key, value []byte, options *string) (err error) {
+func (d *LevelDBEngine) Put(key, value []byte, options string) (err error) {
 	opts := opts.LeveldbOptions{}
 	writeOptions, err := opts.Write(options)
 	if err != nil {
@@ -55,7 +55,7 @@ func (d *LevelDBEngine) Put(key, value []byte, options *string) (err error) {
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-func (d *LevelDBEngine) Delete(key []byte, options *string) (err error) {
+func (d *LevelDBEngine) Delete(key []byte, options string) (err error) {
 	opts := opts.LeveldbOptions{}
 	writeOptions, err := opts.Write(options)
 	if err != nil {

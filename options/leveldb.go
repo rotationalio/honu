@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
@@ -12,13 +13,13 @@ import (
 //to get LevelDB read/write options.
 type LeveldbOptions struct{}
 
-//Parse an option string and returns a LevelDB ReadOption
-//object with those options set.
-func (ldb LeveldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
-	if optionString == nil {
+//Parses an option string and returns a LevelDB ReadOption
+//struct with those options set.
+func (ldb LeveldbOptions) Read(optionString string) (*opt.ReadOptions, error) {
+	if len(strings.TrimSpace(optionString)) == 0 {
 		return nil, nil
 	}
-	options, err := parse(*optionString)
+	options, err := parse(optionString)
 	if err != nil {
 		return nil, err
 	}
@@ -46,13 +47,13 @@ func (ldb LeveldbOptions) Read(optionString *string) (*opt.ReadOptions, error) {
 	return &returnOption, nil
 }
 
-//Parse an option string and returns a LevelDB WriteOption
-//object with those options set.
-func (ldb LeveldbOptions) Write(optionString *string) (*opt.WriteOptions, error) {
-	if optionString == nil {
+//Parses an option string and returns a LevelDB WriteOption
+//struct with those options set.
+func (ldb LeveldbOptions) Write(optionString string) (*opt.WriteOptions, error) {
+	if len(strings.TrimSpace(optionString)) == 0 {
 		return nil, nil
 	}
-	options, err := parse(*optionString)
+	options, err := parse(optionString)
 	if err != nil {
 		return nil, err
 	}

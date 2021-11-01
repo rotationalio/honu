@@ -18,9 +18,9 @@ type Engine interface {
 // Store is a simple key/value interface that allows for Get, Put, and Delete. Nearly
 // all engines should support the Store interface.
 type Store interface {
-	Get(key []byte, options *string) (value []byte, err error)
-	Put(key, value []byte, options *string) error
-	Delete(key []byte, options *string) error
+	Get(key []byte, options string) (value []byte, err error)
+	Put(key, value []byte, options string) error
+	Delete(key []byte, options string) error
 }
 
 // Iterator engines allow queries that scan a range of consecutive keys.

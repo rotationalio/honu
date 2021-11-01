@@ -4,21 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/cockroachdb/pebble"
 )
 
-//Empty struct used to call Read() and Write()
-//to get Pebble read/write options.
+//Empty struct used to call Write()
+//to get Pebble write options.
 type PebbleOptions struct{}
 
-//Parse an option string and returns a Pebble WriteOption object
+//Parses an option string and returns a Pebble WriteOption struct
 //with those options set (Pebble does not use read options)
-func (p PebbleOptions) Write(optionString *string) (*pebble.WriteOptions, error) {
-	if optionString == nil {
+func (p PebbleOptions) Write(optionString string) (*pebble.WriteOptions, error) {
+	if len(strings.TrimSpace(optionString)) == 0 {
 		return nil, nil
 	}
-	options, err := parse(*optionString)
+	options, err := parse(optionString)
 	if err != nil {
 		return nil, err
 	}
