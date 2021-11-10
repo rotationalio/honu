@@ -23,51 +23,57 @@ type LevelDBEngine struct {
 	ldb *leveldb.DB
 }
 
-func (d *LevelDBEngine) Engine() string {
+func (db *LevelDBEngine) Engine() string {
 	return "leveldb"
 }
 
-func (d *LevelDBEngine) Close() error {
-	return d.ldb.Close()
+func (db *LevelDBEngine) Close() error {
+	return db.ldb.Close()
 }
 
 // Get the latest version of the object stored by the key.
-func (d *LevelDBEngine) Get(key []byte, options string) (value []byte, err error) {
-	opts := opts.LeveldbOptions{}
-	readOptions, err := opts.Read(options)
-	if err != nil {
-		return nil, err
+func (db *LevelDBEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
+	var cfg *opts.Options
+	cfg.LeveldbRead = nil
+	for _, option := range options {
+		if err = option(cfg); err != nil {
+			return nil, err
+		}
 	}
-	if value, err = d.ldb.Get(key, readOptions); err != nil && errors.Is(err, leveldb.ErrNotFound) {
+	if value, err = db.ldb.Get(key, cfg.LeveldbRead); err != nil && errors.Is(err, leveldb.ErrNotFound) {
 		return value, engine.ErrNotFound
 	}
 	return value, err
 }
 
 // Put a new value to the specified key and update the version.
-func (d *LevelDBEngine) Put(key, value []byte, options string) (err error) {
-	opts := opts.LeveldbOptions{}
-	writeOptions, err := opts.Write(options)
-	if err != nil {
-		return err
+func (db *LevelDBEngine) Put(key, value []byte, options ...opts.SetOptions) (err error) {
+	var cfg *opts.Options
+	cfg.LeveldbWrite = nil
+	for _, option := range options {
+		if err = option(cfg); err != nil {
+			return err
+		}
 	}
-	return d.ldb.Put(key, value, writeOptions)
+	return db.ldb.Put(key, value, cfg.LeveldbWrite)
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-func (d *LevelDBEngine) Delete(key []byte, options string) (err error) {
-	opts := opts.LeveldbOptions{}
-	writeOptions, err := opts.Write(options)
-	if err != nil {
-		return err
+func (db *LevelDBEngine) Delete(key []byte, options ...opts.SetOptions) (err error) {
+	var cfg *opts.Options
+	cfg.LeveldbWrite = nil
+	for _, option := range options {
+		if err = option(cfg); err != nil {
+			return err
+		}
 	}
-	return d.ldb.Delete(key, writeOptions)
+	return db.ldb.Delete(key, cfg.LeveldbWrite)
 }
 
-func (d *LevelDBEngine) Iter(prefix []byte) (i iterator.Iterator, err error) {
+func (db *LevelDBEngine) Iter(prefix []byte) (i iterator.Iterator, err error) {
 	var slice *util.Range
 	if len(prefix) > 0 {
 		slice = util.BytesPrefix(prefix)
 	}
-	return NewLevelDBIterator(d.ldb.NewIterator(slice, nil)), nil
+	return NewLevelDBIterator(db.ldb.NewIterator(slice, nil)), nil
 }
