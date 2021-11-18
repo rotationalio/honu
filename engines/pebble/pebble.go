@@ -46,8 +46,8 @@ func (db *PebbleEngine) Get(key []byte, options ...opts.SetOptions) (value []byt
 func (db *PebbleEngine) Put(key, value []byte, options ...opts.SetOptions) error {
 	var cfg *opts.Options
 	cfg.PebbleWrite = nil
-	for _, option := range options {
-		if err := option(cfg); err != nil {
+	for _, setOption := range options {
+		if err := setOption(cfg); err != nil {
 			return err
 		}
 	}
@@ -57,8 +57,8 @@ func (db *PebbleEngine) Put(key, value []byte, options ...opts.SetOptions) error
 func (db *PebbleEngine) Delete(key []byte, options ...opts.SetOptions) error {
 	var cfg *opts.Options
 	cfg.PebbleWrite = nil
-	for _, option := range options {
-		if err := option(cfg); err != nil {
+	for _, setOption := range options {
+		if err := setOption(cfg); err != nil {
 			return err
 		}
 	}

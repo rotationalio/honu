@@ -1,62 +1,91 @@
-package options_test
-
-import (
-	"errors"
-	"testing"
-
-	"github.com/rotationalio/honu/options"
-	"github.com/stretchr/testify/require"
-)
-
-//Test to ensure that the correct error is thrown when an improperly
-//formated error string is passed to options.parse()
-func TestInvalidParseOptions(t *testing.T) {
-	expectedError := errors.New("improperly formated option string")
-	ldbOptions := options.LeveldbOptions{}
-
-	options := "SingleElementOptionString"
-	_, err := ldbOptions.Write(options)
-	require.Equal(t, err, expectedError)
-
-	options = "Invalid String Without Comma"
-	_, err = ldbOptions.Read(options)
-	require.Equal(t, err, expectedError)
-}
-
-func TestLevelDBReadOptions(t *testing.T) {
-	ldbOptions := options.LeveldbOptions{}
-	options := "DontFillCache true, Strict 1"
-	readOptions, err := ldbOptions.Read(options)
-	require.NoError(t, err)
-	require.Equal(t, int(readOptions.Strict), 1)
-	require.True(t, readOptions.DontFillCache)
-
-	options = "foo true"
-	_, err = ldbOptions.Read(options)
-	require.Error(t, err, "foo is not a valid leveldb readoption")
-}
-
-func TestLevelDBWriteOptions(t *testing.T) {
-	ldbOptions := options.LeveldbOptions{}
-	options := "NoWriteMerge true, Sync false"
-	WriteOptions, err := ldbOptions.Write(options)
-	require.NoError(t, err)
-	require.True(t, WriteOptions.NoWriteMerge)
-	require.False(t, WriteOptions.Sync)
-
-	options = "bar true"
-	_, err = ldbOptions.Write(options)
-	require.Error(t, err, "bar is not a valid leveldb writeoption")
-}
-
-func TestPebbleWriteOptions(t *testing.T) {
-	pebbleOptions := options.PebbleOptions{}
-	options := "Sync true"
-	WriteOptions, err := pebbleOptions.Write(options)
-	require.NoError(t, err)
-	require.True(t, WriteOptions.Sync)
-
-	options = "foobar true"
-	_, err = pebbleOptions.Write(options)
-	require.Error(t, err, "foobar is not a valid pebble writeoption")
-}
+mode: set
+github.com/rotationalio/honu/dsn.go:17.47,19.16 2 1
+github.com/rotationalio/honu/dsn.go:23.2,23.40 1 1
+github.com/rotationalio/honu/dsn.go:27.2,30.8 1 1
+github.com/rotationalio/honu/dsn.go:19.16,21.3 1 0
+github.com/rotationalio/honu/dsn.go:23.40,25.3 1 1
+github.com/rotationalio/honu/honu.go:32.70,34.42 2 1
+github.com/rotationalio/honu/honu.go:38.2,39.54 2 1
+github.com/rotationalio/honu/honu.go:43.2,43.20 1 1
+github.com/rotationalio/honu/honu.go:62.2,62.16 1 1
+github.com/rotationalio/honu/honu.go:34.42,36.3 1 0
+github.com/rotationalio/honu/honu.go:39.54,41.3 1 0
+github.com/rotationalio/honu/honu.go:44.17,47.64 1 1
+github.com/rotationalio/honu/honu.go:50.28,51.53 1 0
+github.com/rotationalio/honu/honu.go:54.28,55.63 1 0
+github.com/rotationalio/honu/honu.go:58.10,59.69 1 0
+github.com/rotationalio/honu/honu.go:47.64,49.4 1 0
+github.com/rotationalio/honu/honu.go:51.53,53.4 1 0
+github.com/rotationalio/honu/honu.go:55.63,57.4 1 0
+github.com/rotationalio/honu/honu.go:66.28,68.2 1 1
+github.com/rotationalio/honu/honu.go:72.84,75.9 2 1
+github.com/rotationalio/honu/honu.go:80.2,80.57 1 1
+github.com/rotationalio/honu/honu.go:86.2,87.51 2 1
+github.com/rotationalio/honu/honu.go:92.2,92.21 1 1
+github.com/rotationalio/honu/honu.go:99.2,99.22 1 1
+github.com/rotationalio/honu/honu.go:75.9,77.3 1 0
+github.com/rotationalio/honu/honu.go:80.57,83.3 1 0
+github.com/rotationalio/honu/honu.go:87.51,90.3 1 0
+github.com/rotationalio/honu/honu.go:92.21,96.3 1 1
+github.com/rotationalio/honu/honu.go:105.77,108.9 2 1
+github.com/rotationalio/honu/honu.go:113.2,115.56 3 1
+github.com/rotationalio/honu/honu.go:132.2,133.40 2 1
+github.com/rotationalio/honu/honu.go:138.2,138.48 1 1
+github.com/rotationalio/honu/honu.go:141.2,141.56 1 1
+github.com/rotationalio/honu/honu.go:145.2,145.12 1 1
+github.com/rotationalio/honu/honu.go:108.9,110.3 1 0
+github.com/rotationalio/honu/honu.go:115.56,116.41 1 1
+github.com/rotationalio/honu/honu.go:116.41,121.4 1 1
+github.com/rotationalio/honu/honu.go:121.9,123.4 1 0
+github.com/rotationalio/honu/honu.go:124.8,126.51 2 1
+github.com/rotationalio/honu/honu.go:126.51,128.4 1 0
+github.com/rotationalio/honu/honu.go:133.40,135.3 1 0
+github.com/rotationalio/honu/honu.go:138.48,140.3 1 0
+github.com/rotationalio/honu/honu.go:141.56,143.3 1 0
+github.com/rotationalio/honu/honu.go:150.73,153.9 2 1
+github.com/rotationalio/honu/honu.go:157.2,158.56 2 1
+github.com/rotationalio/honu/honu.go:166.2,167.50 2 1
+github.com/rotationalio/honu/honu.go:172.2,175.40 2 1
+github.com/rotationalio/honu/honu.go:180.2,180.48 1 1
+github.com/rotationalio/honu/honu.go:184.2,184.44 1 1
+github.com/rotationalio/honu/honu.go:187.2,187.12 1 1
+github.com/rotationalio/honu/honu.go:153.9,155.3 1 0
+github.com/rotationalio/honu/honu.go:158.56,159.41 1 0
+github.com/rotationalio/honu/honu.go:162.3,162.13 1 0
+github.com/rotationalio/honu/honu.go:159.41,161.4 1 0
+github.com/rotationalio/honu/honu.go:167.50,169.3 1 0
+github.com/rotationalio/honu/honu.go:175.40,177.3 1 0
+github.com/rotationalio/honu/honu.go:180.48,182.3 1 0
+github.com/rotationalio/honu/honu.go:184.44,186.3 1 0
+github.com/rotationalio/honu/honu.go:192.67,195.9 2 1
+github.com/rotationalio/honu/honu.go:198.2,198.26 1 1
+github.com/rotationalio/honu/honu.go:195.9,197.3 1 0
+github.com/rotationalio/honu/honu.go:202.87,205.9 2 1
+github.com/rotationalio/honu/honu.go:210.2,211.57 2 1
+github.com/rotationalio/honu/honu.go:217.2,218.51 2 1
+github.com/rotationalio/honu/honu.go:222.2,222.17 1 1
+github.com/rotationalio/honu/honu.go:205.9,207.3 1 0
+github.com/rotationalio/honu/honu.go:211.57,214.3 1 0
+github.com/rotationalio/honu/honu.go:218.51,221.3 1 0
+github.com/rotationalio/honu/versions.go:13.82,15.40 1 1
+github.com/rotationalio/honu/versions.go:19.2,22.21 2 1
+github.com/rotationalio/honu/versions.go:36.2,36.15 1 1
+github.com/rotationalio/honu/versions.go:15.40,17.3 1 1
+github.com/rotationalio/honu/versions.go:22.21,25.3 1 1
+github.com/rotationalio/honu/versions.go:25.8,28.66 2 1
+github.com/rotationalio/honu/versions.go:28.66,30.4 1 1
+github.com/rotationalio/honu/versions.go:30.9,33.4 1 1
+github.com/rotationalio/honu/versions.go:50.55,51.17 1 1
+github.com/rotationalio/honu/versions.go:56.2,56.51 1 1
+github.com/rotationalio/honu/versions.go:67.2,68.12 2 1
+github.com/rotationalio/honu/versions.go:51.17,53.3 1 1
+github.com/rotationalio/honu/versions.go:56.51,58.3 1 1
+github.com/rotationalio/honu/versions.go:58.8,63.3 3 1
+github.com/rotationalio/honu/versions.go:72.55,73.17 1 1
+github.com/rotationalio/honu/versions.go:77.2,77.50 1 1
+github.com/rotationalio/honu/versions.go:83.2,83.28 1 1
+github.com/rotationalio/honu/versions.go:86.2,90.12 3 1
+github.com/rotationalio/honu/versions.go:73.17,75.3 1 1
+github.com/rotationalio/honu/versions.go:77.50,80.3 1 1
+github.com/rotationalio/honu/versions.go:83.28,85.3 1 1
+github.com/rotationalio/honu/versions.go:94.77,99.2 4 1

@@ -33,10 +33,10 @@ func (db *LevelDBEngine) Close() error {
 
 // Get the latest version of the object stored by the key.
 func (db *LevelDBEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
-	var cfg *opts.Options
+	var cfg opts.Options
 	cfg.LeveldbRead = nil
-	for _, option := range options {
-		if err = option(cfg); err != nil {
+	for _, setOption := range options {
+		if err = setOption(&cfg); err != nil {
 			return nil, err
 		}
 	}
@@ -48,10 +48,10 @@ func (db *LevelDBEngine) Get(key []byte, options ...opts.SetOptions) (value []by
 
 // Put a new value to the specified key and update the version.
 func (db *LevelDBEngine) Put(key, value []byte, options ...opts.SetOptions) (err error) {
-	var cfg *opts.Options
+	var cfg opts.Options
 	cfg.LeveldbWrite = nil
-	for _, option := range options {
-		if err = option(cfg); err != nil {
+	for _, setOption := range options {
+		if err = setOption(&cfg); err != nil {
 			return err
 		}
 	}
@@ -62,8 +62,8 @@ func (db *LevelDBEngine) Put(key, value []byte, options ...opts.SetOptions) (err
 func (db *LevelDBEngine) Delete(key []byte, options ...opts.SetOptions) (err error) {
 	var cfg *opts.Options
 	cfg.LeveldbWrite = nil
-	for _, option := range options {
-		if err = option(cfg); err != nil {
+	for _, setOption := range options {
+		if err = setOption(cfg); err != nil {
 			return err
 		}
 	}
