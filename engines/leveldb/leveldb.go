@@ -23,10 +23,12 @@ type LevelDBEngine struct {
 	ldb *leveldb.DB
 }
 
+//Returns a string giving the engine type.
 func (db *LevelDBEngine) Engine() string {
 	return "leveldb"
 }
 
+//Close the database.
 func (db *LevelDBEngine) Close() error {
 	return db.ldb.Close()
 }
