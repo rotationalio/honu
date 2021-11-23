@@ -35,9 +35,6 @@ func (db *PebbleEngine) Close() error {
 
 // Get the latest version of the object stored by the key.
 func (db *PebbleEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
-	if len(options) > 0 {
-		return nil, errors.New("pebble does not take read options")
-	}
 	value, closer, err := db.pebble.Get(key)
 	if err != nil && errors.Is(err, pebble.ErrNotFound) {
 		return value, engine.ErrNotFound
@@ -74,5 +71,5 @@ func (db *PebbleEngine) Delete(key []byte, options ...opts.SetOptions) error {
 
 //TODO: Implement pebble iteration (engines/pebble/iter.go)
 func (db *PebbleEngine) Iter(prefix []byte) (i iterator.Iterator, err error) {
-	return nil, nil
+	return nil, errors.New("not implemented yet")
 }
