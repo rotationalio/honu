@@ -15,6 +15,7 @@ import (
 	"github.com/rotationalio/honu/engines/pebble"
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
+	opts "github.com/rotationalio/honu/options"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -51,7 +52,7 @@ func Open(uri string, conf config.ReplicaConfig) (db *DB, err error) {
 			return nil, err
 		}
 	case "pebble", "pebbledb":
-		if db.engine, err = pebble.Open(conf); err != nil {
+		if db.engine, err = pebble.Open(dsn.Path, conf); err != nil {
 			return nil, err
 		}
 	default:
@@ -68,7 +69,7 @@ func (d *DB) Close() error {
 
 // Get the latest version of the object stored by the key.
 // TODO: provide read options to the underlying database.
-func (d *DB) Get(key []byte) (value []byte, err error) {
+func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -76,7 +77,7 @@ func (d *DB) Get(key []byte) (value []byte, err error) {
 	}
 
 	// Fetch the value from the database
-	if value, err = store.Get(key); err != nil {
+	if value, err = store.Get(key, options...); err != nil {
 		// TODO: wrap the engine error in standard honu errors?
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func (d *DB) Get(key []byte) (value []byte, err error) {
 
 // Put a new value to the specified key and update the version.
 // TODO: provide write options to the underlying database.
-func (d *DB) Put(key, value []byte) (err error) {
+func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -111,7 +112,7 @@ func (d *DB) Put(key, value []byte) (err error) {
 	// Get or Create the previous version
 	var data []byte
 	var obj *pb.Object
-	if data, err = store.Get(key); err != nil {
+	if data, err = store.Get(key, options...); err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
 			obj = &pb.Object{
 				Key:       key,
@@ -137,7 +138,7 @@ func (d *DB) Put(key, value []byte) (err error) {
 	if data, err = proto.Marshal(obj); err != nil {
 		return err
 	}
-	if err = store.Put(key, data); err != nil {
+	if err = store.Put(key, data, options...); err != nil {
 		return err
 	}
 
@@ -146,7 +147,7 @@ func (d *DB) Put(key, value []byte) (err error) {
 
 // Delete the object represented by the key, creating a tombstone object.
 // TODO: provide write options to the underlying database.
-func (d *DB) Delete(key []byte) (err error) {
+func (d *DB) Delete(key []byte, options ...opts.SetOptions) (err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -154,7 +155,7 @@ func (d *DB) Delete(key []byte) (err error) {
 	}
 
 	var data []byte
-	if data, err = store.Get(key); err != nil {
+	if data, err = store.Get(key, options...); err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
 			return nil
 		}
@@ -179,6 +180,7 @@ func (d *DB) Delete(key []byte) (err error) {
 	if data, err = proto.Marshal(obj); err != nil {
 		return err
 	}
+	// TODO allow writeoptions to be passed to this put
 	if err = store.Put(key, data); err != nil {
 		return err
 	}
@@ -197,7 +199,7 @@ func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
 }
 
 // Object returns metadata associated with the latest object stored by the key.
-func (d *DB) Object(key []byte) (_ *pb.Object, err error) {
+func (d *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
 	// TODO: refactor this into an options slice for faster checking
 	store, ok := d.engine.(engine.Store)
 	if !ok {
@@ -206,7 +208,7 @@ func (d *DB) Object(key []byte) (_ *pb.Object, err error) {
 
 	// Fetch the value from the database
 	var value []byte
-	if value, err = store.Get(key); err != nil {
+	if value, err = store.Get(key, options...); err != nil {
 		// TODO: should we wrap the leveldb error?
 		return nil, err
 	}
