@@ -1,7 +1,9 @@
 package leveldb
 
 import (
+	"bytes"
 	"errors"
+	"sync"
 
 	"github.com/rotationalio/honu/config"
 	engine "github.com/rotationalio/honu/engines"
@@ -11,6 +13,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+// Open a leveldb engine as the backend to the Honu database.
 func Open(path string, conf config.ReplicaConfig) (_ *LevelDBEngine, err error) {
 	engine := &LevelDBEngine{}
 	if engine.ldb, err = leveldb.OpenFile(path, nil); err != nil {
@@ -19,63 +22,156 @@ func Open(path string, conf config.ReplicaConfig) (_ *LevelDBEngine, err error) 
 	return engine, nil
 }
 
+// LevelDBEngine implements Engine and Store
 type LevelDBEngine struct {
+	sync.RWMutex
 	ldb *leveldb.DB
 }
 
-//Returns a string giving the engine type.
+// Transaction implements Transaction
+type Transaction struct {
+	db *LevelDBEngine
+	ro bool
+}
+
+// Returns the name of the engine type.
 func (db *LevelDBEngine) Engine() string {
 	return "leveldb"
 }
 
-//Close the database.
+// Close the database and flush all remaining writes to disk. LevelDB requires a close
+// for graceful shutdown to ensure there is no data loss.
 func (db *LevelDBEngine) Close() error {
 	return db.ldb.Close()
 }
 
-// Get the latest version of the object stored by the key.
-func (db *LevelDBEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
-	var cfg opts.Options
-	cfg.LeveldbRead = nil
-	for _, setOption := range options {
-		if err = setOption(&cfg); err != nil {
-			return nil, err
-		}
+// Begin a multi-operation transaction (used primarily for Put and Delete)
+func (db *LevelDBEngine) Begin(readonly bool) (engine.Transaction, error) {
+	if readonly {
+		db.RLock()
+	} else {
+		db.Lock()
 	}
-	if value, err = db.ldb.Get(key, cfg.LeveldbRead); err != nil && errors.Is(err, leveldb.ErrNotFound) {
+	return &Transaction{db: db, ro: readonly}, nil
+}
+
+// Finish a multi-operation transaction
+func (tx *Transaction) Finish() error {
+	if tx.ro {
+		tx.db.RUnlock()
+	} else {
+		tx.db.Unlock()
+	}
+	return nil
+}
+
+// Get the latest version of the object stored by the key. This is the Transaction Get
+// method which can be used in either readonly or write modes. This is the preferred
+// mechanism to access the underlying engine.
+func (tx *Transaction) Get(key []byte, options *opts.Options) (value []byte, err error) {
+	return tx.db.get(key, options)
+}
+
+// Get the latest version of the object stored by the key. This is the Store Get method
+// which can be used directly without a transaction. It is a unary operation that will
+// read lock the database.
+func (db *LevelDBEngine) Get(key []byte, options *opts.Options) (value []byte, err error) {
+	db.RLock()
+	defer db.RUnlock()
+	return db.get(key, options)
+}
+
+// Thread-unsafe get that is called both by the Transaction and the Store.
+func (db *LevelDBEngine) get(key []byte, options *opts.Options) (value []byte, err error) {
+	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
+	if options.Namespace != "" {
+		key = prepend(options.Namespace, key)
+	}
+
+	if value, err = db.ldb.Get(key, options.LevelDBRead); err != nil && errors.Is(err, leveldb.ErrNotFound) {
 		return value, engine.ErrNotFound
 	}
 	return value, err
 }
 
-// Put a new value to the specified key and update the version.
-func (db *LevelDBEngine) Put(key, value []byte, options ...opts.SetOptions) (err error) {
-	var cfg opts.Options
-	cfg.LeveldbWrite = nil
-	for _, setOption := range options {
-		if err = setOption(&cfg); err != nil {
-			return err
-		}
+// Put a new value to the specified key. This is the Transaction Put method which is
+// used by Honu to ensure consistency across version updates and can only be used in a
+// write transaction.
+func (tx *Transaction) Put(key, value []byte, options *opts.Options) (err error) {
+	if tx.ro {
+		return engine.ErrReadOnlyTx
 	}
-	return db.ldb.Put(key, value, cfg.LeveldbWrite)
+	return tx.db.put(key, value, options)
 }
 
-// Delete the object represented by the key, creating a tombstone object.
-func (db *LevelDBEngine) Delete(key []byte, options ...opts.SetOptions) (err error) {
-	var cfg *opts.Options
-	cfg.LeveldbWrite = nil
-	for _, setOption := range options {
-		if err = setOption(cfg); err != nil {
-			return err
-		}
-	}
-	return db.ldb.Delete(key, cfg.LeveldbWrite)
+// Put a new value to the specified key and update the version. This is the Store Put
+// method which can be used directly without a transaction. It is a unary operation that
+// will lock the database to synchronize it with respect to other transactions.
+func (db *LevelDBEngine) Put(key, value []byte, options *opts.Options) (err error) {
+	db.Lock()
+	defer db.Unlock()
+	return db.put(key, value, options)
 }
 
-func (db *LevelDBEngine) Iter(prefix []byte) (i iterator.Iterator, err error) {
+// Thread-unsafe put that is called both by the Transaction and the Store.
+func (db *LevelDBEngine) put(key, value []byte, options *opts.Options) (err error) {
+	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
+	if options.Namespace != "" {
+		key = prepend(options.Namespace, key)
+	}
+	return db.ldb.Put(key, value, options.LevelDBWrite)
+}
+
+// Delete the object represented by the key, removing it from the database entirely.
+// This is the Transaction Delete method which is used by Honu to clean up and vacuum
+// the database or to reset an object back to the first version. Note that normal Honu
+// deletes Put a tombstone rather than directly deleting data from the database.
+func (tx *Transaction) Delete(key []byte, options *opts.Options) (err error) {
+	if tx.ro {
+		return engine.ErrReadOnlyTx
+	}
+	return tx.db.delete(key, options)
+}
+
+// Delete the object represented by the key, removing it from the database entirely.
+// This is the Store Delete method which can be used directly without a transaction. It
+// is a unary operation that will lock the database to synchronize it with respect to
+// other transactions. Note that normal Honu deletes Put a tombstone rather than
+// directly deleting data from the database.
+func (db *LevelDBEngine) Delete(key []byte, options *opts.Options) (err error) {
+	db.Lock()
+	defer db.Unlock()
+	return db.delete(key, options)
+}
+
+// Thread-unsafe delete that is called both by the Transaction and the Store.
+func (db *LevelDBEngine) delete(key []byte, options *opts.Options) (err error) {
+	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
+	if options.Namespace != "" {
+		key = prepend(options.Namespace, key)
+	}
+	return db.ldb.Delete(key, options.LevelDBWrite)
+}
+
+func (db *LevelDBEngine) Iter(prefix []byte, options *opts.Options) (i iterator.Iterator, err error) {
+	if options.Namespace != "" {
+		prefix = prepend(options.Namespace, prefix)
+	}
 	var slice *util.Range
 	if len(prefix) > 0 {
 		slice = util.BytesPrefix(prefix)
 	}
 	return NewLevelDBIterator(db.ldb.NewIterator(slice, nil)), nil
+}
+
+var nssep = []byte("::")
+
+// prepend the namespace to the key
+func prepend(namespace string, key []byte) []byte {
+	return bytes.Join(
+		[][]byte{
+			[]byte(namespace),
+			key,
+		}, nssep,
+	)
 }

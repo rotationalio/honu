@@ -14,17 +14,26 @@ type Engine interface {
 
 	// Close the engine so that it no longer can be accessed.
 	Close() error
+
+	// Begin a transaction to issue multiple commands (this is an internal transaction
+	// for Honu-specific version management, not an external interface).
+	Begin(readonly bool) (tx Transaction, err error)
 }
 
 // Store is a simple key/value interface that allows for Get, Put, and Delete. Nearly
 // all engines should support the Store interface.
 type Store interface {
-	Get(key []byte, options ...opts.SetOptions) (value []byte, err error)
-	Put(key, value []byte, options ...opts.SetOptions) error
-	Delete(key []byte, options ...opts.SetOptions) error
+	Get(key []byte, options *opts.Options) (value []byte, err error)
+	Put(key, value []byte, options *opts.Options) error
+	Delete(key []byte, options *opts.Options) error
 }
 
 // Iterator engines allow queries that scan a range of consecutive keys.
 type Iterator interface {
-	Iter(prefix []byte) (i iterator.Iterator, err error)
+	Iter(prefix []byte, options *opts.Options) (i iterator.Iterator, err error)
+}
+
+type Transaction interface {
+	Store
+	Finish() error
 }

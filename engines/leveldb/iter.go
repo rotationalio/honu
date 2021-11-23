@@ -1,6 +1,8 @@
 package leveldb
 
 import (
+	"bytes"
+
 	honuiter "github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -23,9 +25,18 @@ var _ honuiter.Iterator = &ldbIterator{}
 
 func (i *ldbIterator) Next() bool   { return i.ldb.Next() }
 func (i *ldbIterator) Prev() bool   { return i.ldb.Prev() }
-func (i *ldbIterator) Key() []byte  { return i.ldb.Key() }
 func (i *ldbIterator) Error() error { return i.ldb.Error() }
 func (i *ldbIterator) Release()     { i.ldb.Release() }
+
+func (i *ldbIterator) Key() []byte {
+	// Fetch the key then split the namespace from the key
+	key := i.ldb.Key()
+	parts := bytes.SplitN(key, nssep, 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return key
+}
 
 func (i *ldbIterator) Value() []byte {
 	obj, _ := i.Object()
