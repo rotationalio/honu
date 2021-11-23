@@ -33,6 +33,10 @@ func (db *PebbleEngine) Close() error {
 	return db.pebble.Close()
 }
 
+func (db *PebbleEngine) Begin(readonly bool) (engine.Transaction, error) {
+	return nil, errors.New("not implemented yet")
+}
+
 // Get the latest version of the object stored by the key.
 func (db *PebbleEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
 	value, closer, err := db.pebble.Get(key)

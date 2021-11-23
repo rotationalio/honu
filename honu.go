@@ -67,18 +67,26 @@ func (d *DB) Close() error {
 	return d.engine.Close()
 }
 
-// Get the latest version of the object stored by the key.
-// TODO: provide read options to the underlying database.
-func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
-	// TODO: refactor this into an options slice for faster checking
-	store, ok := d.engine.(engine.Store)
-	if !ok {
-		return nil, errors.New("underlying engine doesn't support Get accesses")
+// Object returns metadata associated with the latest object stored by the key.
+// Object is the Get function to use if you want to fetch tombstones, otherwise use Get
+// which will return a not found error.
+func (d *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+	var tx engine.Transaction
+	if tx, err = d.engine.Begin(true); err != nil {
+		return nil, err
+	}
+	defer tx.Finish()
+
+	// Collect the options
+	var cfg *opts.Options
+	if cfg, err = opts.New(options...); err != nil {
+		return nil, err
 	}
 
 	// Fetch the value from the database
-	if value, err = store.Get(key, options...); err != nil {
-		// TODO: wrap the engine error in standard honu errors?
+	var value []byte
+	if value, err = tx.Get(key, cfg); err != nil {
+		// TODO: should we wrap the leveldb error?
 		return nil, err
 	}
 
@@ -86,6 +94,15 @@ func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err erro
 	obj := new(pb.Object)
 	if err = proto.Unmarshal(value, obj); err != nil {
 		// TODO: better error message here
+		return nil, err
+	}
+	return obj, nil
+}
+
+// Get the latest version of the object stored by the key.
+func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
+	var obj *pb.Object
+	if obj, err = d.Object(key, options...); err != nil {
 		return nil, err
 	}
 
@@ -101,71 +118,87 @@ func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err erro
 }
 
 // Put a new value to the specified key and update the version.
-// TODO: provide write options to the underlying database.
-func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (err error) {
-	// TODO: refactor this into an options slice for faster checking
-	store, ok := d.engine.(engine.Store)
-	if !ok {
-		return errors.New("underlying engine doesn't support Put accesses")
+func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+	var tx engine.Transaction
+	if tx, err = d.engine.Begin(false); err != nil {
+		return nil, err
+	}
+	defer tx.Finish()
+
+	// Collect the options
+	var cfg *opts.Options
+	if cfg, err = opts.New(options...); err != nil {
+		return nil, err
 	}
 
 	// Get or Create the previous version
 	var data []byte
 	var obj *pb.Object
-	if data, err = store.Get(key, options...); err != nil {
+	if data, err = tx.Get(key, cfg); err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
 			obj = &pb.Object{
 				Key:       key,
-				Namespace: "default",
+				Namespace: cfg.Namespace,
 			}
 		} else {
-			return err
+			return nil, err
 		}
 	} else {
 		obj = new(pb.Object)
 		if err = proto.Unmarshal(data, obj); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Update the version with the new data
 	obj.Data = value
 	if err = d.vm.Update(obj); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Put the version back onto disk
 	if data, err = proto.Marshal(obj); err != nil {
-		return err
+		return nil, err
 	}
-	if err = store.Put(key, data, options...); err != nil {
-		return err
+	if err = tx.Put(key, data, cfg); err != nil {
+		return nil, err
 	}
 
-	return nil
+	// Test to make sure obj.Data is not modified if value is modified.
+	return obj, nil
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-// TODO: provide write options to the underlying database.
-func (d *DB) Delete(key []byte, options ...opts.SetOptions) (err error) {
-	// TODO: refactor this into an options slice for faster checking
-	store, ok := d.engine.(engine.Store)
-	if !ok {
-		return errors.New("underlying engine doesn't support Delete accesses")
+func (d *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+	var tx engine.Transaction
+	if tx, err = d.engine.Begin(false); err != nil {
+		return nil, err
+	}
+	defer tx.Finish()
+
+	// Collect the options
+	var cfg *opts.Options
+	if cfg, err = opts.New(options...); err != nil {
+		return nil, err
+	}
+
+	// TODO: implement destroy
+	if cfg.Destroy {
+		return nil, errors.New("destroy is not implemented yet")
 	}
 
 	var data []byte
-	if data, err = store.Get(key, options...); err != nil {
+	if data, err = tx.Get(key, cfg); err != nil {
 		if errors.Is(err, engine.ErrNotFound) {
-			return nil
+			return nil, err
 		}
-		return err
+		return nil, err
 	}
 
 	// Unmarshal the version information
 	obj := new(pb.Object)
 	if err = proto.Unmarshal(data, obj); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Don't save the data back to disk
@@ -173,51 +206,33 @@ func (d *DB) Delete(key []byte, options ...opts.SetOptions) (err error) {
 
 	// Create a tombstone for the data
 	if err = d.vm.Delete(obj); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Put the version back onto disk
 	if data, err = proto.Marshal(obj); err != nil {
-		return err
+		return nil, err
 	}
-	// TODO allow writeoptions to be passed to this put
-	if err = store.Put(key, data); err != nil {
-		return err
+
+	if err = tx.Put(key, data, cfg); err != nil {
+		return nil, err
 	}
-	return nil
+	return obj, nil
 }
 
 // Iter over a subset of keys specified by the prefix.
 // TODO: provide better mechanisms for iteration.
-func (d *DB) Iter(prefix []byte) (i iterator.Iterator, err error) {
+func (d *DB) Iter(prefix []byte, options ...opts.SetOptions) (i iterator.Iterator, err error) {
+	// Collect the options
+	var cfg *opts.Options
+	if cfg, err = opts.New(options...); err != nil {
+		return nil, err
+	}
+
 	// TODO: refactor this into an options slice for faster checking
 	iter, ok := d.engine.(engine.Iterator)
 	if !ok {
 		return nil, errors.New("underlying engine doesn't support Iter accesses")
 	}
-	return iter.Iter(prefix)
-}
-
-// Object returns metadata associated with the latest object stored by the key.
-func (d *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
-	// TODO: refactor this into an options slice for faster checking
-	store, ok := d.engine.(engine.Store)
-	if !ok {
-		return nil, errors.New("underlying engine doesn't support Object accesses")
-	}
-
-	// Fetch the value from the database
-	var value []byte
-	if value, err = store.Get(key, options...); err != nil {
-		// TODO: should we wrap the leveldb error?
-		return nil, err
-	}
-
-	// Parse the object record to extract the value data
-	obj := new(pb.Object)
-	if err = proto.Unmarshal(value, obj); err != nil {
-		// TODO: better error message here
-		return nil, err
-	}
-	return obj, nil
+	return iter.Iter(prefix, cfg)
 }
