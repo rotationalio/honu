@@ -83,6 +83,10 @@ func (db *LevelDBEngine) Get(key []byte, options *opts.Options) (value []byte, e
 
 // Thread-unsafe get that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) get(key []byte, options *opts.Options) (value []byte, err error) {
+	// Create a default to prevent SigFaults when accessing options{}
+	if options == nil {
+		options = &opts.Options{}
+	}
 	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
 	if options.Namespace != "" {
 		key = prepend(options.Namespace, key)
@@ -115,6 +119,10 @@ func (db *LevelDBEngine) Put(key, value []byte, options *opts.Options) (err erro
 
 // Thread-unsafe put that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) put(key, value []byte, options *opts.Options) (err error) {
+	// Create a default to prevent SigFaults when accessing options{}
+	if options == nil {
+		options = &opts.Options{}
+	}
 	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
 	if options.Namespace != "" {
 		key = prepend(options.Namespace, key)
@@ -146,6 +154,10 @@ func (db *LevelDBEngine) Delete(key []byte, options *opts.Options) (err error) {
 
 // Thread-unsafe delete that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) delete(key []byte, options *opts.Options) (err error) {
+	// Create a default to prevent SigFaults when accessing options{}
+	if options == nil {
+		options = &opts.Options{}
+	}
 	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
 	if options.Namespace != "" {
 		key = prepend(options.Namespace, key)
@@ -154,6 +166,11 @@ func (db *LevelDBEngine) delete(key []byte, options *opts.Options) (err error) {
 }
 
 func (db *LevelDBEngine) Iter(prefix []byte, options *opts.Options) (i iterator.Iterator, err error) {
+	// Create a default to prevent SigFaults when accessing options{}
+	if options == nil {
+		options = &opts.Options{}
+	}
+	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
 	if options.Namespace != "" {
 		prefix = prepend(options.Namespace, prefix)
 	}
