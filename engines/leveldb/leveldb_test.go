@@ -9,8 +9,11 @@ import (
 	"github.com/rotationalio/honu/config"
 	engine "github.com/rotationalio/honu/engines"
 	"github.com/rotationalio/honu/engines/leveldb"
+	"github.com/rotationalio/honu/iterator"
+	pb "github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func getNamespaces() []string {
@@ -22,19 +25,26 @@ func getNamespaces() []string {
 	}
 }
 
-func setupLeveldbEngine() (_ *leveldb.LevelDBEngine, path string, err error) {
+func getIterPairs() [][]string {
+	return [][]string{
+		{"aa", "first"},
+		{"ab", "second"},
+		{"ba", "third"},
+		{"bb", "fourth"},
+		{"bc", "fifth"},
+		{"ca", "sixth"},
+		{"cb", "seventh"},
+	}
+}
+
+func setupLeveldbEngine(t *testing.T) (_ *leveldb.LevelDBEngine, path string) {
 	tempDir, err := ioutil.TempDir("", "leveldb-*")
 	ldbPath := fmt.Sprintf("leveldb:///%s", tempDir)
-	if err != nil {
-		return nil, "", err
-	}
+	require.NoError(t, err)
 	conf := config.ReplicaConfig{}
 	engine, err := leveldb.Open(ldbPath, conf)
-	if err != nil {
-		return nil, "", err
-
-	}
-	return engine, ldbPath, nil
+	require.NoError(t, err)
+	return engine, ldbPath
 }
 
 func getOpts(namespace string, t *testing.T) *options.Options {
@@ -65,8 +75,7 @@ func wrappedDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *
 
 func TestLeveldbEngine(t *testing.T) {
 	//Setup a levelDB Engine
-	ldbEngine, ldbPath, err := setupLeveldbEngine()
-	require.NoError(t, err)
+	ldbEngine, ldbPath := setupLeveldbEngine(t)
 	require.Equal(t, "leveldb", ldbEngine.Engine())
 
 	//Ensure the db was created.
@@ -93,9 +102,9 @@ func TestLeveldbEngine(t *testing.T) {
 }
 
 func TestLeveldbEngineWithNullOptions(t *testing.T) {
-	ldbEngine, ldbPath, err := setupLeveldbEngine()
-	require.NoError(t, err)
+	ldbEngine, ldbPath := setupLeveldbEngine(t)
 
+	//Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
 	defer ldbEngine.Close()
 
@@ -108,8 +117,7 @@ func TestLeveldbEngineWithNullOptions(t *testing.T) {
 }
 
 func TestLeveldbTransactions(t *testing.T) {
-	ldbEngine, ldbPath, err := setupLeveldbEngine()
-	require.NoError(t, err)
+	ldbEngine, ldbPath := setupLeveldbEngine(t)
 
 	//Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
@@ -147,42 +155,71 @@ func TestLeveldbTransactions(t *testing.T) {
 }
 
 func TestLevelDBIter(t *testing.T) {
-	ldbEngine, ldbPath, err := setupLeveldbEngine()
-	require.NoError(t, err)
+	ldbEngine, ldbPath := setupLeveldbEngine(t)
 
 	//Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
 	defer ldbEngine.Close()
 
-	// Put a range of data into the database
+	for _, namespace := range getNamespaces() {
+		//TODO: figure out what to do with this testcase.
+		if namespace == "namespace::with::colons" {
+			continue
+		}
+		opts := getOpts(namespace, t)
+		pairs := getIterPairs()
+		addIterPairsToDB(ldbEngine, opts, pairs, t)
 
-	for _, pair := range [][]string{
-		{"aa", "aa"},
-		{"ab", "ab"},
-		{"ba", "ba"},
-		{"bb", "bb"},
-		{"bc", "bc"},
-		{"ca", "ca"},
-		{"cb", "cb"},
-	} {
-		key := []byte(pair[0])
-		value := []byte(pair[1])
-		wrappedPut(ldbEngine, nil, key, value, t)
+		prefix := []byte("")
+		iter, err := ldbEngine.Iter(prefix, opts)
+		require.NoError(t, err)
+		collected := rangeOverIterator(iter, prefix, pairs, t)
+		require.Equal(t, len(pairs), collected)
+
+		prefix = []byte("b")
+		iter, err = ldbEngine.Iter(prefix, opts)
+		require.NoError(t, err)
+		bPairs := [][]string{
+			pairs[2],
+			pairs[3],
+			pairs[4],
+		}
+		collected = rangeOverIterator(iter, prefix, bPairs, t)
+		require.Equal(t, 3, collected)
 	}
+}
 
-	prefix := []byte("")
-	iter, err := ldbEngine.Iter(prefix, nil)
-	require.NoError(t, err)
-
+func rangeOverIterator(iter iterator.Iterator, prefix []byte, pairs [][]string, t *testing.T) int {
 	collected := 0
 	for iter.Next() {
-		key := iter.Key()
-		fmt.Print(key)
+		key := string(iter.Key())
+		expectedKey := pairs[collected][0]
+		require.Equal(t, expectedKey, key)
 
-		value := iter.Value()
-		fmt.Println(value)
+		value := string(iter.Value())
+		expectedValue := pairs[collected][1]
+		require.Equal(t, expectedValue, value)
 
 		collected++
 	}
-	fmt.Println(collected)
+	return collected
+}
+
+// Put a range of data into the database
+func addIterPairsToDB(ldbStore engine.Store, opts *options.Options, pairs [][]string, t *testing.T) {
+	for _, pair := range pairs {
+		key := []byte(pair[0])
+		value := []byte(pair[1])
+
+		obj := &pb.Object{
+			Key:       key,
+			Namespace: opts.Namespace,
+			Data:      value,
+		}
+
+		data, err := proto.Marshal(obj)
+		require.NoError(t, err)
+
+		wrappedPut(ldbStore, opts, key, data, t)
+	}
 }

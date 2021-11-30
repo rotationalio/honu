@@ -2,6 +2,7 @@ package leveldb
 
 import (
 	"bytes"
+	"fmt"
 
 	honuiter "github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
@@ -39,11 +40,13 @@ func (i *ldbIterator) Key() []byte {
 }
 
 func (i *ldbIterator) Value() []byte {
-	obj, _ := i.Object()
-	if obj != nil {
+	obj, err := i.Object()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	} else {
 		return obj.Data
 	}
-	return nil
 }
 
 func (i *ldbIterator) Object() (obj *pb.Object, err error) {
