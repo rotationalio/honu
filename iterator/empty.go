@@ -23,6 +23,7 @@ func (i *emptyIterator) rErr() {
 
 func (i *emptyIterator) Next() bool                { i.rErr(); return false }
 func (i *emptyIterator) Prev() bool                { i.rErr(); return false }
+func (i *emptyIterator) Seek(key []byte) bool      { i.rErr(); return false }
 func (*emptyIterator) Key() []byte                 { return nil }
 func (*emptyIterator) Value() []byte               { return nil }
 func (*emptyIterator) Object() (*pb.Object, error) { return nil, nil }

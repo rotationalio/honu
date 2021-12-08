@@ -23,10 +23,11 @@ type ldbIterator struct {
 // Type check for the ldbIterator
 var _ honuiter.Iterator = &ldbIterator{}
 
-func (i *ldbIterator) Next() bool   { return i.ldb.Next() }
-func (i *ldbIterator) Prev() bool   { return i.ldb.Prev() }
-func (i *ldbIterator) Error() error { return i.ldb.Error() }
-func (i *ldbIterator) Release()     { i.ldb.Release() }
+func (i *ldbIterator) Next() bool           { return i.ldb.Next() }
+func (i *ldbIterator) Prev() bool           { return i.ldb.Prev() }
+func (i *ldbIterator) Seek(key []byte) bool { return i.ldb.Seek(key) }
+func (i *ldbIterator) Error() error         { return i.ldb.Error() }
+func (i *ldbIterator) Release()             { i.ldb.Release() }
 
 func (i *ldbIterator) Key() []byte {
 	// Fetch the key then split the namespace from the key
