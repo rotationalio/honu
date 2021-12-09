@@ -60,4 +60,7 @@ type Iterator interface {
 	// Seek moves the iterator to the first key/value pair whose key is greater than or
 	// equal to the given key. It returns whether such pair exists.
 	Seek(key []byte) bool
+
+	// Namespace returns the current namespace the iterator is operating on.
+	Namespace() string
 }

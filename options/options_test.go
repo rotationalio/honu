@@ -13,7 +13,7 @@ func TestHonuOptions(t *testing.T) {
 	// Test default options
 	opts, err := options.New()
 	require.NoError(t, err, "could not create options")
-	require.Equal(t, "default", opts.Namespace)
+	require.Equal(t, options.NamespaceDefault, opts.Namespace)
 	require.False(t, opts.Destroy)
 
 	// Test setting multiple options
@@ -21,6 +21,11 @@ func TestHonuOptions(t *testing.T) {
 	require.NoError(t, err, "could not create options")
 	require.Equal(t, "foo", opts.Namespace)
 	require.True(t, opts.Destroy)
+
+	// Ensuring setting empty string namespace still ends up as the default namespace
+	opts, err = options.New(options.WithNamespace(""))
+	require.NoError(t, err, "could not create options with empty string namespace")
+	require.Equal(t, options.NamespaceDefault, opts.Namespace)
 }
 
 func TestLevelDBReadOptions(t *testing.T) {
