@@ -24,12 +24,7 @@ func setupLevelDB() (*leveldb.DB, string, error) {
 }
 
 func BenchmarkHonuGet(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupHonuDB(nil)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -38,7 +33,7 @@ func BenchmarkHonuGet(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	_, err = db.Put(key, value)
@@ -85,12 +80,7 @@ func BenchmarkLevelDBGet(b *testing.B) {
 }
 
 func BenchmarkHonuPut(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupHonuDB(nil)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -99,7 +89,7 @@ func BenchmarkHonuPut(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	// Reset the timer to focus only on the get call
@@ -139,12 +129,7 @@ func BenchmarkLevelDBPut(b *testing.B) {
 }
 
 func BenchmarkHonuDelete(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupHonuDB(nil)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -153,7 +138,7 @@ func BenchmarkHonuDelete(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	// Reset the timer to focus only on the get call
@@ -200,12 +185,7 @@ func BenchmarkLevelDBDelete(b *testing.B) {
 }
 
 func BenchmarkHonuIter(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupHonuDB(nil)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -214,7 +194,7 @@ func BenchmarkHonuIter(b *testing.B) {
 	// Create a key and value
 	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
 		value := make([]byte, 4096)
-		_, err = rand.Read(value)
+		_, err := rand.Read(value)
 		require.NoError(b, err)
 
 		_, err = db.Put([]byte(key), value)
@@ -281,12 +261,7 @@ func BenchmarkLevelDBIter(b *testing.B) {
 }
 
 func BenchmarkHonuObject(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupHonuDB(nil)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -295,7 +270,7 @@ func BenchmarkHonuObject(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	_, err = db.Put(key, value)

@@ -17,25 +17,13 @@ import (
 )
 
 // Returns a constant list of namespace strings.
+// TODO: Share with honu_test.go
 func getNamespaces() []string {
 	return []string{
 		"",
 		"basic",
 		"namespace with spaces",
 		"namespace::with::colons",
-	}
-}
-
-// Returns a constant pair of Key/Value string pairs.
-func getIterPairs() [][]string {
-	return [][]string{
-		{"aa", "first"},
-		{"ab", "second"},
-		{"ba", "third"},
-		{"bb", "fourth"},
-		{"bc", "fifth"},
-		{"ca", "sixth"},
-		{"cb", "seventh"},
 	}
 }
 
@@ -46,13 +34,16 @@ func setupLeveldbEngine(t *testing.T) (_ *leveldb.LevelDBEngine, path string) {
 	require.NoError(t, err)
 	conf := config.ReplicaConfig{}
 	engine, err := leveldb.Open(ldbPath, conf)
+	if err != nil {
+		os.RemoveAll(tempDir)
+	}
 	require.NoError(t, err)
 	return engine, ldbPath
 }
 
 // Creates an options.Options struct with namespace set and returns
 // a pointer to it.
-func getOpts(namespace string, t *testing.T) *options.Options {
+func namespaceOpts(namespace string, t *testing.T) *options.Options {
 	opts, err := options.New(options.WithNamespace(namespace))
 	require.NoError(t, err)
 	return opts
@@ -106,7 +97,7 @@ func TestLeveldbEngine(t *testing.T) {
 	// Iterate through a list of namespaces and ensure
 	// Put, Get and Delete are working.
 	for _, namespace := range getNamespaces() {
-		opts := getOpts(namespace, t)
+		opts := namespaceOpts(namespace, t)
 		value := []byte(namespace)
 		wrappedPut(ldbEngine, opts, key, value, t)
 		wrappedGet(ldbEngine, opts, key, value, t)
@@ -132,7 +123,8 @@ func TestLeveldbTransactions(t *testing.T) {
 		tx, err := ldbEngine.Begin(false)
 		require.NoError(t, err)
 
-		opts := getOpts(namespace, t)
+		opts, err := options.New(options.WithNamespace(namespace))
+		require.NoError(t, err)
 		value := []byte(namespace)
 		wrappedPut(tx, opts, key, value, t)
 		wrappedGet(tx, opts, key, value, t)
@@ -172,8 +164,16 @@ func TestLevelDBIter(t *testing.T) {
 			continue
 		}
 		// Add data to the database to iterate over.
-		opts := getOpts(namespace, t)
-		pairs := getIterPairs()
+		opts := namespaceOpts(namespace, t)
+		pairs := [][]string{
+			{"aa", "first"},
+			{"ab", "second"},
+			{"ba", "third"},
+			{"bb", "fourth"},
+			{"bc", "fifth"},
+			{"ca", "sixth"},
+			{"cb", "seventh"},
+		}
 		addIterPairsToDB(ldbEngine, opts, pairs, t)
 
 		// Try to iterate over all keys

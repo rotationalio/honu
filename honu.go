@@ -63,16 +63,16 @@ func Open(uri string, conf config.ReplicaConfig) (db *DB, err error) {
 }
 
 // Close the database, allowing no further interactions.
-func (d *DB) Close() error {
-	return d.engine.Close()
+func (db *DB) Close() error {
+	return db.engine.Close()
 }
 
 // Object returns metadata associated with the latest object stored by the key.
 // Object is the Get function to use if you want to fetch tombstones, otherwise use Get
 // which will return a not found error.
-func (d *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
 	var tx engine.Transaction
-	if tx, err = d.engine.Begin(true); err != nil {
+	if tx, err = db.engine.Begin(true); err != nil {
 		return nil, err
 	}
 	defer tx.Finish()
@@ -100,9 +100,9 @@ func (d *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err e
 }
 
 // Get the latest version of the object stored by the key.
-func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
+func (db *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
 	var obj *pb.Object
-	if obj, err = d.Object(key, options...); err != nil {
+	if obj, err = db.Object(key, options...); err != nil {
 		return nil, err
 	}
 
@@ -118,9 +118,9 @@ func (d *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err erro
 }
 
 // Put a new value to the specified key and update the version.
-func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
 	var tx engine.Transaction
-	if tx, err = d.engine.Begin(false); err != nil {
+	if tx, err = db.engine.Begin(false); err != nil {
 		return nil, err
 	}
 	defer tx.Finish()
@@ -152,7 +152,7 @@ func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, e
 
 	// Update the version with the new data
 	obj.Data = value
-	if err = d.vm.Update(obj); err != nil {
+	if err = db.vm.Update(obj); err != nil {
 		return nil, err
 	}
 
@@ -169,9 +169,9 @@ func (d *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, e
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-func (d *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
 	var tx engine.Transaction
-	if tx, err = d.engine.Begin(false); err != nil {
+	if tx, err = db.engine.Begin(false); err != nil {
 		return nil, err
 	}
 	defer tx.Finish()
@@ -205,7 +205,7 @@ func (d *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err e
 	obj.Data = nil
 
 	// Create a tombstone for the data
-	if err = d.vm.Delete(obj); err != nil {
+	if err = db.vm.Delete(obj); err != nil {
 		return nil, err
 	}
 
@@ -222,7 +222,7 @@ func (d *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err e
 
 // Iter over a subset of keys specified by the prefix.
 // TODO: provide better mechanisms for iteration.
-func (d *DB) Iter(prefix []byte, options ...opts.SetOptions) (i iterator.Iterator, err error) {
+func (db *DB) Iter(prefix []byte, options ...opts.SetOptions) (i iterator.Iterator, err error) {
 	// Collect the options
 	var cfg *opts.Options
 	if cfg, err = opts.New(options...); err != nil {
@@ -230,7 +230,7 @@ func (d *DB) Iter(prefix []byte, options ...opts.SetOptions) (i iterator.Iterato
 	}
 
 	// TODO: refactor this into an options slice for faster checking
-	iter, ok := d.engine.(engine.Iterator)
+	iter, ok := db.engine.(engine.Iterator)
 	if !ok {
 		return nil, errors.New("underlying engine doesn't support Iter accesses")
 	}
