@@ -62,7 +62,11 @@ func TestLevelDBInteractions(t *testing.T) {
 		// Use a constant key to ensure namespaces
 		// are working correctly.
 		key := []byte("foo")
-		expectedValue := []byte("this is the value of foo")
+		//append a constant to namespace as the value
+		//because when the empty namespace is returned
+		//as a key it is unmarsheled as []byte(nil)
+		//instead of []byte{}
+		expectedValue := []byte(namespace + "this is the value of foo")
 
 		// Put a version to the database
 		obj, err := db.Put(key, expectedValue, options.WithNamespace(namespace))

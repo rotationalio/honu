@@ -50,20 +50,20 @@ func namespaceOpts(namespace string, t *testing.T) *options.Options {
 }
 
 // Wraps engine.Store.Put with testing checks.
-func wrappedPut(ldbStore engine.Store, opts *options.Options, key []byte, value []byte, t *testing.T) {
+func checkPut(ldbStore engine.Store, opts *options.Options, key []byte, value []byte, t *testing.T) {
 	err := ldbStore.Put(key, value, opts)
 	require.NoError(t, err)
 }
 
 // Wraps engine.Store.Get with testing checks.
-func wrappedGet(ldbStore engine.Store, opts *options.Options, key []byte, expectedValue []byte, t *testing.T) {
+func checkGet(ldbStore engine.Store, opts *options.Options, key []byte, expectedValue []byte, t *testing.T) {
 	getValue, err := ldbStore.Get(key, opts)
 	require.NoError(t, err)
 	require.Equal(t, getValue, expectedValue)
 }
 
 // Wraps engine.Store.Delete with testing checks.
-func wrappedDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *testing.T) {
+func checkDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *testing.T) {
 	err := ldbStore.Delete(key, opts)
 	require.NoError(t, err)
 
@@ -90,18 +90,18 @@ func TestLeveldbEngine(t *testing.T) {
 
 	// Check Put, Get and Delete with a nil namespace.
 	value := []byte("nil")
-	wrappedPut(ldbEngine, nil, key, value, t)
-	wrappedGet(ldbEngine, nil, key, value, t)
-	wrappedDelete(ldbEngine, nil, key, t)
+	checkPut(ldbEngine, nil, key, value, t)
+	checkGet(ldbEngine, nil, key, value, t)
+	checkDelete(ldbEngine, nil, key, t)
 
 	// Iterate through a list of namespaces and ensure
 	// Put, Get and Delete are working.
 	for _, namespace := range getNamespaces() {
 		opts := namespaceOpts(namespace, t)
 		value := []byte(namespace)
-		wrappedPut(ldbEngine, opts, key, value, t)
-		wrappedGet(ldbEngine, opts, key, value, t)
-		wrappedDelete(ldbEngine, opts, key, t)
+		checkPut(ldbEngine, opts, key, value, t)
+		checkGet(ldbEngine, opts, key, value, t)
+		checkDelete(ldbEngine, opts, key, t)
 	}
 }
 
@@ -126,9 +126,9 @@ func TestLeveldbTransactions(t *testing.T) {
 		opts, err := options.New(options.WithNamespace(namespace))
 		require.NoError(t, err)
 		value := []byte(namespace)
-		wrappedPut(tx, opts, key, value, t)
-		wrappedGet(tx, opts, key, value, t)
-		wrappedDelete(tx, opts, key, t)
+		checkPut(tx, opts, key, value, t)
+		checkGet(tx, opts, key, value, t)
+		checkDelete(tx, opts, key, t)
 
 		// Complete the transaction.
 		require.NoError(t, tx.Finish())
@@ -230,6 +230,6 @@ func addIterPairsToDB(ldbStore engine.Store, opts *options.Options, pairs [][]st
 
 		data, err := proto.Marshal(obj)
 		require.NoError(t, err)
-		wrappedPut(ldbStore, opts, key, data, t)
+		checkPut(ldbStore, opts, key, data, t)
 	}
 }
