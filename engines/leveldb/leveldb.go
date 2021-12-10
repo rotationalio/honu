@@ -83,7 +83,7 @@ func (db *LevelDBEngine) Get(key []byte, options *opts.Options) (value []byte, e
 
 // Thread-unsafe get that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) get(key []byte, options *opts.Options) (value []byte, err error) {
-	//Create a default to prevent SigFaults when accessing options.
+	//Create a default to prevent panics when accessing options.
 	if options == nil {
 		if options, err = opts.New(); err != nil {
 			return nil, err
@@ -121,7 +121,7 @@ func (db *LevelDBEngine) Put(key, value []byte, options *opts.Options) (err erro
 
 // Thread-unsafe put that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) put(key, value []byte, options *opts.Options) (err error) {
-	//Create a default to prevent SigFaults when accessing options.
+	//Create a default to prevent panics when accessing options.
 	if options == nil {
 		if options, err = opts.New(); err != nil {
 			return err
@@ -158,7 +158,7 @@ func (db *LevelDBEngine) Delete(key []byte, options *opts.Options) (err error) {
 
 // Thread-unsafe delete that is called both by the Transaction and the Store.
 func (db *LevelDBEngine) delete(key []byte, options *opts.Options) (err error) {
-	//Create a default to prevent SigFaults when accessing options.
+	//Create a default to prevent panics when accessing options.
 	if options == nil {
 		if options, err = opts.New(); err != nil {
 			return err
@@ -172,7 +172,7 @@ func (db *LevelDBEngine) delete(key []byte, options *opts.Options) (err error) {
 }
 
 func (db *LevelDBEngine) Iter(prefix []byte, options *opts.Options) (i iterator.Iterator, err error) {
-	//Create a default to prevent SigFaults when accessing options.
+	//Create a default to prevent panic when accessing options.
 	if options == nil {
 		if options, err = opts.New(); err != nil {
 			return nil, err
@@ -186,7 +186,7 @@ func (db *LevelDBEngine) Iter(prefix []byte, options *opts.Options) (i iterator.
 	if len(prefix) > 0 {
 		slice = util.BytesPrefix(prefix)
 	}
-	return NewLevelDBIterator(db.ldb.NewIterator(slice, nil)), nil
+	return NewLevelDBIterator(db.ldb.NewIterator(slice, nil), options.Namespace), nil
 }
 
 var nssep = []byte("::")

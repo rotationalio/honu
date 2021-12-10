@@ -5,18 +5,20 @@ import (
 	"testing"
 
 	. "github.com/rotationalio/honu/iterator"
+	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEmptyIterator(t *testing.T) {
 	// Check that the empty iterator returns expected values
-	iter := NewEmptyIterator(nil)
+	iter := NewEmptyIterator(nil, "")
 	require.False(t, iter.Next())
 	require.False(t, iter.Prev())
 	require.False(t, iter.Seek([]byte("foo")))
 	require.Nil(t, iter.Key())
 	require.Nil(t, iter.Value())
 	require.NoError(t, iter.Error())
+	require.Equal(t, options.NamespaceDefault, iter.Namespace())
 
 	obj, err := iter.Object()
 	require.NoError(t, err)
@@ -31,7 +33,7 @@ func TestEmptyIterator(t *testing.T) {
 	require.EqualError(t, iter.Error(), ErrIterReleased.Error())
 
 	// Check that the empty iterator can be initialized with an error
-	iter = NewEmptyIterator(errors.New("something bad happened"))
+	iter = NewEmptyIterator(errors.New("something bad happened"), "foo")
 	require.EqualError(t, iter.Error(), "something bad happened")
 
 	// Ensure that calling any of the iterator methods do not change the error
@@ -40,6 +42,7 @@ func TestEmptyIterator(t *testing.T) {
 	require.False(t, iter.Seek([]byte("foo")))
 	require.Nil(t, iter.Key())
 	require.Nil(t, iter.Value())
+	require.Equal(t, "foo", iter.Namespace())
 
 	obj, err = iter.Object()
 	require.NoError(t, err)
