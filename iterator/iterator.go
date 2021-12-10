@@ -28,6 +28,10 @@ type Iterator interface {
 	// It returns false if the iterator has been exhausted.
 	Next() bool
 
+	// Prev moves the iterator to the previous key/value pair or row.
+	// It returns false if the iterator has been exhausted.
+	Prev() bool
+
 	// Error returns any accumulated error. Exhausting all rows or key/value pairs is
 	// not considered to be an error.
 	Error() error
@@ -52,4 +56,11 @@ type Iterator interface {
 	// iterator. Release can be called multiple times without error but after it has
 	// been called, no Iterator methods will return data.
 	Release()
+
+	// Seek moves the iterator to the first key/value pair whose key is greater than or
+	// equal to the given key. It returns whether such pair exists.
+	Seek(key []byte) bool
+
+	// Namespace returns the current namespace the iterator is operating on.
+	Namespace() string
 }

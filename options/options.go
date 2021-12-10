@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	defaultNamespace = "default"
+	NamespaceDefault = "default"
 )
 
 // New creates a per-call Options object based on the variadic SetOptions closures
 // supplied by the user. New also sets sensible defaults for various options.
 func New(options ...SetOptions) (cfg *Options, err error) {
-	cfg = &Options{Namespace: defaultNamespace}
+	cfg = &Options{Namespace: NamespaceDefault}
 	for _, option := range options {
 		if err = option(cfg); err != nil {
 			return nil, err
@@ -37,7 +37,10 @@ type SetOptions func(cfg *Options) error
 // WithNamespace returns a closure that sets a namespace other than the default.
 func WithNamespace(namespace string) SetOptions {
 	return func(cfg *Options) error {
-		cfg.Namespace = namespace
+		// If namespace is empty, keep default namespace
+		if namespace != "" {
+			cfg.Namespace = namespace
+		}
 		return nil
 	}
 }
