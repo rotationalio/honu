@@ -24,7 +24,7 @@ func setupLevelDB() (*leveldb.DB, string, error) {
 }
 
 func BenchmarkHonuGet(b *testing.B) {
-	db, tmpDir := setupHonuDB(nil)
+	db, tmpDir := setupHonuDB(b)
 
 	// Cleanup when we're done with the test 
 	// NOTE: defers are evaluated in FIFO order, so this ensures the db is closed first then the directory deleted
