@@ -106,7 +106,7 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, obj.Tombstone())
 
-		// Get the tombstone from the database
+		// Get the metadata from the database (should no longer be a tombstone)
 		obj, err = db.Object(key, options.WithNamespace(namespace))
 		require.NoError(t, err)
 		require.Equal(t, uint64(3), obj.Version.Version)
