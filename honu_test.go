@@ -25,7 +25,7 @@ func getNamespaces() []string {
 	}
 }
 
-func setupHonuDB(t require.TestingT) (db *honu.DB, tmpDir string) {
+func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
 	tmpDir, err := ioutil.TempDir("", "honuldb-*")
 	require.NoError(t, err)
