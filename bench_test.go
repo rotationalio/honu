@@ -7,20 +7,32 @@ import (
 	"os"
 	"testing"
 
+	pb "github.com/rotationalio/honu/object"
 	"github.com/stretchr/testify/require"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func setupLevelDB() (*leveldb.DB, string, error) {
+// Global variables to prevent compiler optimizations
+var (
+	gKey   []byte
+	gValue []byte
+	gErr   error
+	gObj   *pb.Object
+)
+
+func setupLevelDB(t testing.TB) (*leveldb.DB, string) {
 	// Create a new leveldb database in a temporary directory
 	tmpDir, err := ioutil.TempDir("", "honuldb-*")
-	if err != nil {
-		return nil, "", err
-	}
+	require.NoError(t, err)
 
 	// Open a leveldb database directly without honu wrapper
 	db, err := leveldb.OpenFile(tmpDir, nil)
-	return db, tmpDir, err
+	require.NoError(t, err)
+	if err != nil && tmpDir != "" {
+		fmt.Println(tmpDir)
+		os.RemoveAll(tmpDir)
+	}
+	return db, tmpDir
 }
 
 func BenchmarkHonuGet(b *testing.B) {
@@ -50,12 +62,7 @@ func BenchmarkHonuGet(b *testing.B) {
 }
 
 func BenchmarkLevelDBGet(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupLevelDB(b)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -64,7 +71,7 @@ func BenchmarkLevelDBGet(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	require.NoError(b, db.Put(key, value, nil))
@@ -102,12 +109,7 @@ func BenchmarkHonuPut(b *testing.B) {
 }
 
 func BenchmarkLevelDBPut(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupLevelDB(b)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -116,7 +118,7 @@ func BenchmarkLevelDBPut(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	// Reset the timer to focus only on the get call
@@ -155,12 +157,7 @@ func BenchmarkHonuDelete(b *testing.B) {
 }
 
 func BenchmarkLevelDBDelete(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupLevelDB(b)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -169,7 +166,7 @@ func BenchmarkLevelDBDelete(b *testing.B) {
 	// Create a key and value
 	key := []byte("foo")
 	value := make([]byte, 4096)
-	_, err = rand.Read(value)
+	_, err := rand.Read(value)
 	require.NoError(b, err)
 
 	// Reset the timer to focus only on the get call
@@ -221,12 +218,7 @@ func BenchmarkHonuIter(b *testing.B) {
 }
 
 func BenchmarkLevelDBIter(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+	db, tmpDir := setupLevelDB(b)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
@@ -235,7 +227,7 @@ func BenchmarkLevelDBIter(b *testing.B) {
 	// Create a key and value
 	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
 		value := make([]byte, 4096)
-		_, err = rand.Read(value)
+		_, err := rand.Read(value)
 		require.NoError(b, err)
 
 		require.NoError(b, db.Put([]byte(key), value, nil))
@@ -245,7 +237,6 @@ func BenchmarkLevelDBIter(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		iter := db.NewIterator(nil, nil)
-		require.NoError(b, err)
 		for iter.Next() {
 			gKey = iter.Key()
 			gValue = iter.Value()

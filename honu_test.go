@@ -9,20 +9,27 @@ import (
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
-	pb "github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
 )
 
+var pairs = [][]string{
+	{"aa", "first"},
+	{"ab", "second"},
+	{"ba", "third"},
+	{"bb", "fourth"},
+	{"bc", "fifth"},
+	{"ca", "sixth"},
+	{"cb", "seventh"},
+}
+
 // Returns a constant list of namespace strings.
 // TODO: Share with engines/leveldb/leveldb_test.go
-func getNamespaces() []string {
-	return []string{
-		"",
-		"basic",
-		"namespace with spaces",
-		"namespace::with::colons",
-	}
+var testNamespaces = []string{
+	"",
+	"basic",
+	"namespace with spaces",
+	"namespace::with::colons",
 }
 
 func setupHonuDB(t require.TestingT) (db *honu.DB, tmpDir string) {
@@ -58,7 +65,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer db.Close()
 
-	for _, namespace := range getNamespaces() {
+	for _, namespace := range testNamespaces {
 		// Use a constant key to ensure namespaces
 		// are working correctly.
 		key := []byte("foo")
@@ -119,16 +126,8 @@ func TestLevelDBInteractions(t *testing.T) {
 		if namespace == "namespace::with::colons" {
 			continue
 		}
+
 		// Put a range of data into the database
-		pairs := [][]string{
-			{"aa", "first"},
-			{"ab", "second"},
-			{"ba", "third"},
-			{"bb", "fourth"},
-			{"bc", "fifth"},
-			{"ca", "sixth"},
-			{"cb", "seventh"},
-		}
 		for _, pair := range pairs {
 			key := []byte(pair[0])
 			value := []byte(pair[1])
@@ -160,11 +159,3 @@ func TestLevelDBInteractions(t *testing.T) {
 		iter.Release()
 	}
 }
-
-// Global variables to prevent compiler optimizations
-var (
-	gKey   []byte
-	gValue []byte
-	gErr   error
-	gObj   *pb.Object
-)

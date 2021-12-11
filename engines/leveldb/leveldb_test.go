@@ -16,15 +16,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var pairs = [][]string{
+	{"aa", "first"},
+	{"ab", "second"},
+	{"ba", "third"},
+	{"bb", "fourth"},
+	{"bc", "fifth"},
+	{"ca", "sixth"},
+	{"cb", "seventh"},
+}
+
 // Returns a constant list of namespace strings.
 // TODO: Share with honu_test.go
-func getNamespaces() []string {
-	return []string{
-		"",
-		"basic",
-		"namespace with spaces",
-		"namespace::with::colons",
-	}
+var testNamespaces = []string{
+	"",
+	"basic",
+	"namespace with spaces",
+	"namespace::with::colons",
 }
 
 // Returns a LevelDBEngine and the path were it was created.
@@ -96,7 +104,7 @@ func TestLeveldbEngine(t *testing.T) {
 
 	// Iterate through a list of namespaces and ensure
 	// Put, Get and Delete are working.
-	for _, namespace := range getNamespaces() {
+	for _, namespace := range testNamespaces {
 		opts := namespaceOpts(namespace, t)
 		value := []byte(namespace)
 		checkPut(ldbEngine, opts, key, value, t)
@@ -118,7 +126,7 @@ func TestLeveldbTransactions(t *testing.T) {
 
 	// Iterate through a list of namespaces and ensure
 	// Put, Get and Delete are working with transactions.
-	for _, namespace := range getNamespaces() {
+	for _, namespace := range testNamespaces {
 		// Start a transaction with readonly set to false.
 		tx, err := ldbEngine.Begin(false)
 		require.NoError(t, err)
@@ -155,7 +163,7 @@ func TestLevelDBIter(t *testing.T) {
 	defer os.RemoveAll(ldbPath)
 	defer ldbEngine.Close()
 
-	for _, namespace := range getNamespaces() {
+	for _, namespace := range testNamespaces {
 		// TODO: figure out what to do with this testcase.
 		// Iter currently grabs the namespace by splitting
 		// on :: and grabbing the first string, so it only
@@ -165,15 +173,7 @@ func TestLevelDBIter(t *testing.T) {
 		}
 		// Add data to the database to iterate over.
 		opts := namespaceOpts(namespace, t)
-		pairs := [][]string{
-			{"aa", "first"},
-			{"ab", "second"},
-			{"ba", "third"},
-			{"bb", "fourth"},
-			{"bc", "fifth"},
-			{"ca", "sixth"},
-			{"cb", "seventh"},
-		}
+
 		addIterPairsToDB(ldbEngine, opts, pairs, t)
 
 		// Try to iterate over all keys
