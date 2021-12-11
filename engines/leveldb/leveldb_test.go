@@ -27,7 +27,6 @@ var pairs = [][]string{
 }
 
 // Returns a constant list of namespace strings.
-// TODO: Share with honu_test.go
 var testNamespaces = []string{
 	"",
 	"basic",
@@ -36,7 +35,7 @@ var testNamespaces = []string{
 }
 
 // Returns a LevelDBEngine and the path were it was created.
-func setupLeveldbEngine(t *testing.T) (_ *leveldb.LevelDBEngine, path string) {
+func setupLeveldbEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 	tempDir, err := ioutil.TempDir("", "leveldb-*")
 	ldbPath := fmt.Sprintf("leveldb:///%s", tempDir)
 	require.NoError(t, err)
