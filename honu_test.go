@@ -3,24 +3,39 @@ package honu_test
 import (
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
-	pb "github.com/rotationalio/honu/object"
+	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func setupHonuDB() (*honu.DB, string, error) {
+var pairs = [][]string{
+	{"aa", "first"},
+	{"ab", "second"},
+	{"ba", "third"},
+	{"bb", "fourth"},
+	{"bc", "fifth"},
+	{"ca", "sixth"},
+	{"cb", "seventh"},
+}
+
+// Returns a constant list of namespace strings.
+// TODO: Share with engines/leveldb/leveldb_test.go
+var testNamespaces = []string{
+	"",
+	"basic",
+	"namespace with spaces",
+	"namespace::with::colons",
+}
+
+func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
 	tmpDir, err := ioutil.TempDir("", "honuldb-*")
-	if err != nil {
-		return nil, "", err
-	}
+	require.NoError(t, err)
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
@@ -34,407 +49,113 @@ func setupHonuDB() (*honu.DB, string, error) {
 		GossipSigma:    15 * time.Second,
 	}
 
-	db, err := honu.Open(uri, conf)
-	return db, tmpDir, err
-}
-
-func setupLevelDB() (*leveldb.DB, string, error) {
-	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "honuldb-*")
-	if err != nil {
-		return nil, "", err
+	db, err = honu.Open(uri, conf)
+	require.NoError(t, err)
+	if err != nil && tmpDir != "" {
+		fmt.Println(tmpDir)
+		os.RemoveAll(tmpDir)
 	}
-
-	// Open a leveldb database directly without honu wrapper
-	db, err := leveldb.OpenFile(tmpDir, nil)
-	return db, tmpDir, err
+	return db, tmpDir
 }
 
 func TestLevelDBInteractions(t *testing.T) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(t, err)
+	db, tmpDir := setupHonuDB(t)
 
 	// Cleanup when we're done with the test
 	defer os.RemoveAll(tmpDir)
 	defer db.Close()
 
-	// Put a version to the database
-	_, err = db.Put([]byte("foo"), []byte("this is the value of foo"))
-	require.NoError(t, err)
+	for _, namespace := range testNamespaces {
+		// Use a constant key to ensure namespaces
+		// are working correctly.
+		key := []byte("foo")
+		//append a constant to namespace as the value
+		//because when the empty namespace is returned
+		//as a key it is unmarsheled as []byte(nil)
+		//instead of []byte{}
+		expectedValue := []byte(namespace + "this is the value of foo")
 
-	// Get the version of foo from the database
-	value, err := db.Get([]byte("foo"))
-	require.NoError(t, err)
-	require.Equal(t, []byte("this is the value of foo"), value)
-
-	// Get the meta data from foo
-	obj, err := db.Object([]byte("foo"))
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), obj.Version.Version)
-
-	// Delete the version from the database
-	_, err = db.Delete([]byte("foo"))
-	require.NoError(t, err)
-
-	// Should not be able to get the deleted version
-	value, err = db.Get([]byte("foo"))
-	require.Error(t, err)
-	require.Empty(t, value)
-
-	// Get the tombstone from the database
-	obj, err = db.Object([]byte("foo"))
-	require.NoError(t, err)
-	require.Equal(t, uint64(2), obj.Version.Version)
-	require.True(t, obj.Tombstone())
-	require.Empty(t, obj.Data)
-
-	// Be able to "undelete" a tombstone
-	_, err = db.Put([]byte("foo"), []byte("this is the undead foo"))
-	require.NoError(t, err)
-
-	value, err = db.Get([]byte("foo"))
-	require.NoError(t, err)
-	require.Equal(t, []byte("this is the undead foo"), value)
-
-	// Get the tombstone from the database
-	obj, err = db.Object([]byte("foo"))
-	require.NoError(t, err)
-	require.Equal(t, uint64(3), obj.Version.Version)
-	require.False(t, obj.Tombstone())
-
-	// Put a range of data into the database
-	for _, pair := range [][]string{
-		{"aa", "123456"},
-		{"ab", "7890123"},
-		{"ba", "4567890"},
-		{"bb", "1234567"},
-		{"bc", "9012345"},
-		{"ca", "67890123"},
-		{"cb", "4567890123"},
-	} {
-		_, err = db.Put([]byte(pair[0]), []byte(pair[1]))
+		// Put a version to the database
+		obj, err := db.Put(key, expectedValue, options.WithNamespace(namespace))
 		require.NoError(t, err)
-	}
+		require.False(t, obj.Tombstone())
 
-	// Iterate over a prefix in the database
-	iter, err := db.Iter([]byte("b"))
-	require.NoError(t, err)
-	collected := 0
-	for iter.Next() {
-		collected++
+		// Get the version of foo from the database
+		value, err := db.Get(key, options.WithNamespace(namespace))
+		require.NoError(t, err)
+		require.Equal(t, expectedValue, value)
 
-		key := iter.Key()
-		require.Len(t, key, 2)
-
-		value := iter.Value()
-		require.Len(t, value, 7)
-
-		obj, err := iter.Object()
+		// Get the meta data from foo
+		obj, err = db.Object(key, options.WithNamespace(namespace))
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), obj.Version.Version)
-	}
+		require.False(t, obj.Tombstone())
 
-	require.Equal(t, 3, collected)
-	require.NoError(t, iter.Error())
-	iter.Release()
-}
+		// Delete the version from the database and ensure you
+		// are not able to get the deleted version
+		_, err = db.Delete(key, options.WithNamespace(namespace))
+		require.NoError(t, err)
 
-// Global variables to prevent compiler optimizations
-var (
-	gKey   []byte
-	gValue []byte
-	gErr   error
-	gObj   *pb.Object
-)
+		value, err = db.Get(key, options.WithNamespace(namespace))
+		require.Error(t, err)
+		require.Empty(t, value)
 
-func BenchmarkHonuGet(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
+		// Get the tombstone from the database
+		obj, err = db.Object(key, options.WithNamespace(namespace))
+		require.NoError(t, err)
+		require.Equal(t, uint64(2), obj.Version.Version)
+		require.True(t, obj.Tombstone())
+		require.Empty(t, obj.Data)
 
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+		// Be able to "undelete" a tombstone
+		undeadValue := []byte("this is the undead foo")
+		obj, err = db.Put(key, undeadValue, options.WithNamespace(namespace))
+		require.NoError(t, err)
+		require.False(t, obj.Tombstone())
 
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
+		// Get the metadata from the database (should no longer be a tombstone)
+		obj, err = db.Object(key, options.WithNamespace(namespace))
+		require.NoError(t, err)
+		require.Equal(t, uint64(3), obj.Version.Version)
+		require.False(t, obj.Tombstone())
 
-	_, err = db.Put(key, value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		gValue, gErr = db.Get(key)
-	}
-
-	require.NoError(b, gErr)
-	require.Equal(b, value, gValue)
-}
-
-func BenchmarkLevelDBGet(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	require.NoError(b, db.Put(key, value, nil))
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		gValue, gErr = db.Get(key, nil)
-	}
-
-	require.NoError(b, gErr)
-	require.Equal(b, value, gValue)
-}
-
-func BenchmarkHonuPut(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, gErr = db.Put(key, value)
-	}
-
-	require.NoError(b, gErr)
-}
-
-func BenchmarkLevelDBPut(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		gErr = db.Put(key, value, nil)
-	}
-
-	require.NoError(b, gErr)
-}
-
-func BenchmarkHonuDelete(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		_, err = db.Put(key, value)
-		require.NoError(b, err)
-		b.StartTimer()
-		_, gErr = db.Delete(key)
-	}
-
-	require.NoError(b, gErr)
-}
-
-func BenchmarkLevelDBDelete(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		require.NoError(b, db.Put(key, value, nil))
-		b.StartTimer()
-		gErr = db.Delete(key, nil)
-	}
-
-	require.NoError(b, gErr)
-}
-
-func BenchmarkHonuIter(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
-		value := make([]byte, 4096)
-		_, err = rand.Read(value)
-		require.NoError(b, err)
-
-		_, err = db.Put([]byte(key), value)
-		require.NoError(b, err)
-	}
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		iter, err := db.Iter(nil)
-		require.NoError(b, err)
-		for iter.Next() {
-			gKey = iter.Key()
-			gValue = iter.Value()
+		// TODO: figure out what to do with this testcase.
+		// Iter currently grabs the namespace by splitting
+		// on :: and grabbing the first string, so it only
+		// grabs "namespace".
+		if namespace == "namespace::with::colons" {
+			continue
 		}
 
-		gErr = iter.Error()
-		iter.Release()
-	}
-
-	require.NoError(b, gErr)
-	require.Len(b, gKey, 2)
-	require.Len(b, gValue, 4096)
-}
-
-func BenchmarkLevelDBIter(b *testing.B) {
-	db, tmpDir, err := setupLevelDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
-		value := make([]byte, 4096)
-		_, err = rand.Read(value)
-		require.NoError(b, err)
-
-		require.NoError(b, db.Put([]byte(key), value, nil))
-	}
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		iter := db.NewIterator(nil, nil)
-		require.NoError(b, err)
-		for iter.Next() {
-			gKey = iter.Key()
-			gValue = iter.Value()
+		// Put a range of data into the database
+		for _, pair := range pairs {
+			key := []byte(pair[0])
+			value := []byte(pair[1])
+			_, err := db.Put(key, value, options.WithNamespace(namespace))
+			require.NoError(t, err)
 		}
 
-		gErr = iter.Error()
+		// Iterate over a prefix in the database
+		iter, err := db.Iter([]byte("b"), options.WithNamespace(namespace))
+		require.NoError(t, err)
+		collected := 0
+		for iter.Next() {
+			key := iter.Key()
+			require.Equal(t, string(key), pairs[collected+2][0])
+
+			value := iter.Value()
+			fmt.Println(value)
+			require.Equal(t, string(value), string(pairs[collected+2][1]))
+
+			obj, err := iter.Object()
+			require.NoError(t, err)
+			require.Equal(t, uint64(1), obj.Version.Version)
+
+			collected++
+		}
+
+		require.Equal(t, 3, collected)
+		require.NoError(t, iter.Error())
 		iter.Release()
 	}
-
-	require.NoError(b, gErr)
-	require.Len(b, gKey, 2)
-	require.Len(b, gValue, 4096)
-}
-
-func BenchmarkHonuObject(b *testing.B) {
-	db, tmpDir, err := setupHonuDB()
-	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
-		os.RemoveAll(tmpDir)
-	}
-	require.NoError(b, err)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
-
-	// Create a key and value
-	key := []byte("foo")
-	value := make([]byte, 4096)
-	_, err = rand.Read(value)
-	require.NoError(b, err)
-
-	_, err = db.Put(key, value)
-	require.NoError(b, err)
-
-	// Reset the timer to focus only on the get call
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		gObj, gErr = db.Object(key)
-	}
-
-	require.NoError(b, gErr)
-	require.NotEmpty(b, gObj)
 }
