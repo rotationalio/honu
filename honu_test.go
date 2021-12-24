@@ -119,6 +119,29 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.Equal(t, uint64(3), obj.Version.Version)
 		require.False(t, obj.Tombstone())
 
+		// Attempt to directly update the object in the database
+		obj.Data = []byte("directly updated")
+		obj.Owner = "me"
+		obj.Version.Parent = nil
+		obj.Version.Version = 42
+		obj.Version.Pid = 93
+		obj.Version.Region = "here"
+		obj.Version.Tombstone = false
+		require.NoError(t, db.Update(obj))
+
+		obj, err = db.Object(key, options.WithNamespace(namespace))
+		require.NoError(t, err)
+		require.Equal(t, uint64(42), obj.Version.Version)
+		require.Equal(t, uint64(93), obj.Version.Pid)
+		require.Equal(t, "me", obj.Owner)
+		require.Equal(t, "here", obj.Version.Region)
+
+		// Update with same namespace option should not error.
+		require.NoError(t, db.Update(obj, options.WithNamespace(namespace)))
+
+		// Update with wrong namespace should error
+		require.Error(t, db.Update(obj, options.WithNamespace("this is not the right thing")))
+
 		// TODO: figure out what to do with this testcase.
 		// Iter currently grabs the namespace by splitting
 		// on :: and grabbing the first string, so it only
