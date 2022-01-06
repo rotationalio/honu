@@ -1,5 +1,7 @@
 package object
 
+var VersionZero = Version{}
+
 // Tombstone returns true if the version of the object is a Tombstone (for a deleted object)
 func (o *Object) Tombstone() bool {
 	if o.Version == nil {
@@ -17,6 +19,11 @@ func (v *Version) IsZero() bool {
 // IsLater returns true if the specified version is later than the other version. It
 // returns false if the other version is later or equal to the specified version.
 func (v *Version) IsLater(other *Version) bool {
+	// If other is nil, then we assume it represents the zero-valued version.
+	if other == nil {
+		return true
+	}
+
 	// Version is monotonically increasing, if it's greater than the other, then this
 	// version is later than the other.
 	if v.Version > other.Version {

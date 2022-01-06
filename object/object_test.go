@@ -26,6 +26,9 @@ func TestTombstone(t *testing.T) {
 
 func TestVersionIsLater(t *testing.T) {
 	v1 := &Version{Pid: 8, Version: 42}
+	require.True(t, v1.IsLater(nil))
+	require.True(t, v1.IsLater(&VersionZero))
+	require.False(t, VersionZero.IsLater(v1))
 	require.True(t, v1.IsLater(&Version{Pid: 8, Version: 40}))
 	require.True(t, v1.IsLater(&Version{Pid: 9, Version: 42}))
 	require.False(t, v1.IsLater(&Version{Pid: 7, Version: 42}))
