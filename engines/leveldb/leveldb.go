@@ -14,9 +14,9 @@ import (
 )
 
 // Open a leveldb engine as the backend to the Honu database.
-func Open(path string, conf config.ReplicaConfig) (_ *LevelDBEngine, err error) {
+func Open(path string, conf config.Config) (_ *LevelDBEngine, err error) {
 	engine := &LevelDBEngine{}
-	if engine.ldb, err = leveldb.OpenFile(path, nil); err != nil {
+	if engine.ldb, err = leveldb.OpenFile(path, conf.LDBOptions); err != nil {
 		return nil, err
 	}
 	return engine, nil

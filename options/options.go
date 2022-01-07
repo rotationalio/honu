@@ -11,7 +11,7 @@ const (
 
 // New creates a per-call Options object based on the variadic SetOptions closures
 // supplied by the user. New also sets sensible defaults for various options.
-func New(options ...SetOptions) (cfg *Options, err error) {
+func New(options ...Option) (cfg *Options, err error) {
 	cfg = &Options{Namespace: NamespaceDefault}
 	for _, option := range options {
 		if err = option(cfg); err != nil {
@@ -28,14 +28,13 @@ type Options struct {
 	LevelDBWrite *ldb.WriteOptions
 	PebbleWrite  *pebble.WriteOptions
 	Namespace    string
-	Destroy      bool
 }
 
 // Defines the signature of functions accepted as parameters by Honu methods.
-type SetOptions func(cfg *Options) error
+type Option func(cfg *Options) error
 
 // WithNamespace returns a closure that sets a namespace other than the default.
-func WithNamespace(namespace string) SetOptions {
+func WithNamespace(namespace string) Option {
 	return func(cfg *Options) error {
 		// If namespace is empty, keep default namespace
 		if namespace != "" {
@@ -45,21 +44,9 @@ func WithNamespace(namespace string) SetOptions {
 	}
 }
 
-// WithDestroy returns a closure that sets an option so that instead of creating a
-// tombstone, the data is permanently deleted from the database, meaning that a
-// subsequent Put will restart the versioning. Use Destroy with care in a distributed
-// system, if you destroy a key in an anti-entropy environment it will simply be
-// repaired by the system to the latest version before the Delete.
-func WithDestroy() SetOptions {
-	return func(cfg *Options) error {
-		cfg.Destroy = true
-		return nil
-	}
-}
-
 //Closure returning a function that adds the leveldbRead
 //parameter to an Options struct's LeveldbRead field.
-func WithLeveldbRead(opts *ldb.ReadOptions) SetOptions {
+func WithLevelDBRead(opts *ldb.ReadOptions) Option {
 	return func(cfg *Options) error {
 		cfg.LevelDBRead = opts
 		return nil
@@ -68,7 +55,7 @@ func WithLeveldbRead(opts *ldb.ReadOptions) SetOptions {
 
 //Closure returning a function that adds the leveldbWrite
 //parameter to an Options struct's LeveldbWrite field.
-func WithLeveldbWrite(opts *ldb.WriteOptions) SetOptions {
+func WithLevelDBWrite(opts *ldb.WriteOptions) Option {
 	return func(cfg *Options) error {
 		cfg.LevelDBWrite = opts
 		return nil
@@ -77,7 +64,7 @@ func WithLeveldbWrite(opts *ldb.WriteOptions) SetOptions {
 
 //Closure returning a function that adds the pebbleWrite
 //parameter to an Options struct's PebbleWrite field.
-func WithPebbleWrite(opts *pebble.WriteOptions) SetOptions {
+func WithPebbleWrite(opts *pebble.WriteOptions) Option {
 	return func(cfg *Options) error {
 		cfg.PebbleWrite = opts
 		return nil

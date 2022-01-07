@@ -1,7 +1,6 @@
 package leveldb_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -34,18 +33,18 @@ var testNamespaces = []string{
 	"namespace::with::colons",
 }
 
-// Returns a LevelDBEngine and the path were it was created.
+// Returns a LevelDBEngine and the path where it was created.
 func setupLeveldbEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 	tempDir, err := ioutil.TempDir("", "leveldb-*")
-	ldbPath := fmt.Sprintf("leveldb:///%s", tempDir)
 	require.NoError(t, err)
-	conf := config.ReplicaConfig{}
-	engine, err := leveldb.Open(ldbPath, conf)
+
+	conf := config.New()
+	engine, err := leveldb.Open(tempDir, conf)
 	if err != nil {
 		os.RemoveAll(tempDir)
 	}
 	require.NoError(t, err)
-	return engine, ldbPath
+	return engine, tempDir
 }
 
 // Creates an options.Options struct with namespace set and returns

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
@@ -39,14 +38,12 @@ func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
-	conf := config.ReplicaConfig{
-		Enabled:        true,
-		BindAddr:       ":443",
-		PID:            8,
-		Region:         "us-southwest-16",
-		Name:           "testing",
-		GossipInterval: 1 * time.Minute,
-		GossipSigma:    15 * time.Second,
+	conf := config.Config{
+		Versions: config.ReplicaConfig{
+			PID:    8,
+			Region: "us-southwest-16",
+			Name:   "testing",
+		},
 	}
 
 	db, err = honu.Open(uri, conf)

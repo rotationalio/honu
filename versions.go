@@ -3,7 +3,6 @@ package honu
 import (
 	"errors"
 	"fmt"
-	"net"
 
 	"github.com/rotationalio/honu/config"
 	pb "github.com/rotationalio/honu/object"
@@ -23,14 +22,8 @@ func NewVersionManager(conf config.ReplicaConfig) (v *VersionManager, err error)
 		// The common name
 		v.Owner = fmt.Sprintf("%d:%s", conf.PID, conf.Name)
 	} else {
-		// Check to see if there is a domain name in the bindaddr
-		var host string
-		if host, _, err = net.SplitHostPort(conf.BindAddr); err == nil {
-			v.Owner = fmt.Sprintf("%d:%s", conf.PID, host)
-		} else {
-			// The owner name is just the pid:region in the last case
-			v.Owner = fmt.Sprintf("%d:%s", conf.PID, conf.Region)
-		}
+		// The owner name is just the pid:region in the last case
+		v.Owner = fmt.Sprintf("%d:%s", conf.PID, conf.Region)
 	}
 
 	return v, nil
