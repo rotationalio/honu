@@ -29,7 +29,11 @@ type DB struct {
 // Open a replicated embedded database with the specified URI. Database URIs should
 // specify protocol:///relative/path/to/db for embedded databases. For absolute paths,
 // specify protocol:////absolute/path/to/db.
-func Open(uri string, conf config.Config) (db *DB, err error) {
+func Open(uri string, options ...config.Option) (db *DB, err error) {
+	// Create a configuration from the options passed in.
+	// TODO: do we really like this style of configuration?
+	conf := config.New(options...)
+
 	var dsn *DSN
 	if dsn, err = ParseDSN(uri); err != nil {
 		return nil, err

@@ -38,15 +38,7 @@ func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
-	conf := config.Config{
-		Versions: config.ReplicaConfig{
-			PID:    8,
-			Region: "us-southwest-16",
-			Name:   "testing",
-		},
-	}
-
-	db, err = honu.Open(uri, conf)
+	db, err = honu.Open(uri, config.WithReplica(8, "us-southwest-16", "testing"))
 	require.NoError(t, err)
 	if err != nil && tmpDir != "" {
 		fmt.Println(tmpDir)
