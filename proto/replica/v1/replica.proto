@@ -15,42 +15,37 @@ import "object/v1/object.proto";
 //
 // The Replication Service requires mTLS authentication in order to conduct exchanges.
 service Replication {
-    // During gossip, the initiating replica sends a randomly selected remote peer the
-    // version vectors of all objects it currently stores. The remote peer should
-    // respond with updates that correspond to more recent versions of the objects. The
-    // remote peer can than also make a reciprocal request for updates by sending the
-    // set of versions requested that were more recent on the initiating replica, and
-    // use a partial flag to indicate that it is requesting specific versions. This
-    // mechanism implements bilateral anti-entropy: a push and pull gossip.
-    rpc Gossip(VersionVectors) returns (Updates) {}
+    // Gossip implements biltateral anti-entropy: during a Gossip session the initiating
+    // replica pushes updates to the remote peer and pulls requested changes. Using
+    // bidirectional streaming, the initiating peer sends data-less sync messages with
+    // the versions of objects it stores locally. The remote replica then responds with
+    // data if its local version is later or sends a sync message back requesting the
+    // data from the initating replica if its local version is earlier (no exchange)
+    // occurs if both replicas have the same version. At the end of a gossip session,
+    // both replicas should have synchronized and have identical underlying data stores.
+    rpc Gossip(stream Sync) returns (stream Sync) {}
 }
 
-// VersionVectors initiate a Gossip RPC by passing along the current state of the
-// namespace of objects on the initiating replica. Objects should not have data
-// populated in this message, only metadata. If the partial flag is set, that indicates
-// that the replica only wants to consider the objects described rather than the entire
-// namespace (e.g. objects that may have been created outside the set of objects
-// described). The partial flag is typically used as a mechanism to fetch specific
-// objects that are known to be later from the remote replica. The namespaces array
-// specifies which namespaces should be considered in gossip allowing for partial
-// replication by namespace if necessary. If the namespaces array is empty, then all
-// namespaces are considered during Gossip.
-message VersionVectors {
-    // Version vectors of objects without data.
-    repeated honu.object.v1.Object objects = 1;
+// Sync messages allow replicas to exchange information in a bidirectional stream.
+// Because Sync messages are sent in the stream, there are different synchronization
+// types. A "check" synchronization sends only the version vector without data,
+// requesting the remote peer to check if they have a later version, and if so, return
+// it. A "repair" synchronization sends object data back if the sender's version is
+// later. A "complete" synchronization indicates that the sender is fully synchronized,
+// and an "error" synchronization message says that there was some failure repairing
+// the specified version vector.
+message Sync {
+    // Status indicates what state the synchronization is in between peers, allowing
+    // the replicas to coordinate between multiple sync messages in a grpc stream.
+    enum Status {
+        UNKNOWN = 0;                   // Should not be used as a status
+        CHECK = 1;                     // Sync contains version information only
+        REPAIR = 2;                    // Sync contains object data information
+        COMPLETE = 3;                  // Sync contains no object information, ready to end Gossip
+        ERROR = 4;                     // Sync contains object-specific error information
+    }
 
-    // A request to consider only the objects specified in the version vector and not
-    // the entire namespace (e.g. ignore objects that are not specified).
-    bool partial = 2;
-
-    // Limit the comparison only to the specified namespace(s). If not set or empty,
-    // then all namespaces are considered.
-    repeated string namespaces = 3;
-}
-
-// Updates returns data to repair entropy (e.g. to repair the divergence caused by
-// updates). Updates should only contain the objects that have later versions and the
-// objects should have their data fields populated.
-message Updates {
-    repeated honu.object.v1.Object objects = 1;
+    Status status = 1;                 // The status/type of sync messages
+    honu.object.v1.Object object = 2;  // The object being synchronized
+    string error = 3;                  // Error information if the object failed to sync
 }
