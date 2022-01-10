@@ -117,7 +117,7 @@ func (db *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err err
 
 }
 
-// Update an object directly in the database without modifying it's version information.
+// Update an object directly in the database without modifying its version information.
 // Update is to Put as Object is to Get - use Update when manually modifying the data
 // store, for example during replication, but not for normal DB operations.
 func (db *DB) Update(obj *pb.Object, options ...opts.SetOptions) (err error) {
