@@ -120,6 +120,41 @@ func (db *DB) Get(key []byte, options ...opts.Option) (value []byte, err error) 
 
 }
 
+// Update an object directly in the database without modifying its version information.
+// Update is to Put as Object is to Get - use Update when manually modifying the data
+// store, for example during replication, but not for normal DB operations.
+func (db *DB) Update(obj *pb.Object, options ...opts.SetOptions) (err error) {
+	var tx engine.Transaction
+	if tx, err = db.engine.Begin(false); err != nil {
+		return err
+	}
+	defer tx.Finish()
+
+	// Collect the options
+	var cfg *opts.Options
+	if cfg, err = opts.New(options...); err != nil {
+		return err
+	}
+
+	// Check the namespace and that it matches the object
+	if cfg.Namespace == opts.NamespaceDefault {
+		cfg.Namespace = obj.Namespace
+	} else if cfg.Namespace != obj.Namespace {
+		return errors.New("options namespace does not match object namespace")
+	}
+
+	// Put the version directly to disk
+	var data []byte
+	if data, err = proto.Marshal(obj); err != nil {
+		return err
+	}
+
+	if err = tx.Put(obj.Key, data, cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Put a new value to the specified key and update the version.
 func (db *DB) Put(key, value []byte, options ...opts.Option) (_ *pb.Object, err error) {
 	var tx engine.Transaction
