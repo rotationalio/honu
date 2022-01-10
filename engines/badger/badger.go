@@ -7,7 +7,7 @@ import (
 	engine "github.com/rotationalio/honu/engines"
 )
 
-func Open(conf config.ReplicaConfig) (*BadgerEngine, error) {
+func Open(conf config.Config) (*BadgerEngine, error) {
 	return &BadgerEngine{}, errors.New("not implemented yet")
 }
 

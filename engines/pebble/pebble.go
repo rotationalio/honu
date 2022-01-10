@@ -15,7 +15,7 @@ type PebbleEngine struct {
 }
 
 // TODO: Allow Passing Pebble Options
-func Open(path string, conf config.ReplicaConfig) (_ *PebbleEngine, err error) {
+func Open(path string, conf config.Config) (_ *PebbleEngine, err error) {
 	engine := &PebbleEngine{}
 	if engine.pebble, err = pebble.Open(path, nil); err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (db *PebbleEngine) Begin(readonly bool) (engine.Transaction, error) {
 }
 
 // Get the latest version of the object stored by the key.
-func (db *PebbleEngine) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
+func (db *PebbleEngine) Get(key []byte, options ...opts.Option) (value []byte, err error) {
 	value, closer, err := db.pebble.Get(key)
 	if err != nil && errors.Is(err, pebble.ErrNotFound) {
 		return value, engine.ErrNotFound
@@ -50,7 +50,7 @@ func (db *PebbleEngine) Get(key []byte, options ...opts.SetOptions) (value []byt
 }
 
 // Put a new value to the specified key and update the version.
-func (db *PebbleEngine) Put(key, value []byte, options ...opts.SetOptions) error {
+func (db *PebbleEngine) Put(key, value []byte, options ...opts.Option) error {
 	var cfg *opts.Options
 	cfg.PebbleWrite = nil
 	for _, setOption := range options {
@@ -62,7 +62,7 @@ func (db *PebbleEngine) Put(key, value []byte, options ...opts.SetOptions) error
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-func (db *PebbleEngine) Delete(key []byte, options ...opts.SetOptions) error {
+func (db *PebbleEngine) Delete(key []byte, options ...opts.Option) error {
 	var cfg *opts.Options
 	cfg.PebbleWrite = nil
 	for _, setOption := range options {

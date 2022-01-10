@@ -1,7 +1,6 @@
 package leveldb_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -34,18 +33,18 @@ var testNamespaces = []string{
 	"namespace::with::colons",
 }
 
-// Returns a LevelDBEngine and the path were it was created.
-func setupLeveldbEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
+// Returns a LevelDBEngine and the path where it was created.
+func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 	tempDir, err := ioutil.TempDir("", "leveldb-*")
-	ldbPath := fmt.Sprintf("leveldb:///%s", tempDir)
 	require.NoError(t, err)
-	conf := config.ReplicaConfig{}
-	engine, err := leveldb.Open(ldbPath, conf)
+
+	conf, _ := config.New()
+	engine, err := leveldb.Open(tempDir, conf)
 	if err != nil {
 		os.RemoveAll(tempDir)
 	}
 	require.NoError(t, err)
-	return engine, ldbPath
+	return engine, tempDir
 }
 
 // Creates an options.Options struct with namespace set and returns
@@ -81,7 +80,7 @@ func checkDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *te
 
 func TestLeveldbEngine(t *testing.T) {
 	// Setup a levelDB Engine.
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 	require.Equal(t, "leveldb", ldbEngine.Engine())
 
 	// Ensure the db was created.
@@ -113,7 +112,7 @@ func TestLeveldbEngine(t *testing.T) {
 }
 
 func TestLeveldbTransactions(t *testing.T) {
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 
 	// Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
@@ -156,7 +155,7 @@ func TestLeveldbTransactions(t *testing.T) {
 }
 
 func TestLevelDBIter(t *testing.T) {
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 
 	// Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)

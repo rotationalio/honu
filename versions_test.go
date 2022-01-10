@@ -25,11 +25,6 @@ func TestVersionManager(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "8:us-east-2c", vers1.Owner)
 
-	conf.BindAddr = "us2.vaspdirectory.net:443"
-	vers1, err = NewVersionManager(conf)
-	require.NoError(t, err)
-	require.Equal(t, "8:us2.vaspdirectory.net", vers1.Owner)
-
 	conf.Name = "mitchell"
 	vers1, err = NewVersionManager(conf)
 	require.NoError(t, err)

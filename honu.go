@@ -29,20 +29,25 @@ type DB struct {
 // Open a replicated embedded database with the specified URI. Database URIs should
 // specify protocol:///relative/path/to/db for embedded databases. For absolute paths,
 // specify protocol:////absolute/path/to/db.
-func Open(uri string, conf config.ReplicaConfig) (db *DB, err error) {
+func Open(uri string, options ...config.Option) (db *DB, err error) {
+	// Create a configuration from the options passed in.
+	var conf config.Config
+	if conf, err = config.New(options...); err != nil {
+		return nil, err
+	}
+
 	var dsn *DSN
 	if dsn, err = ParseDSN(uri); err != nil {
 		return nil, err
 	}
 
 	db = &DB{}
-	if db.vm, err = NewVersionManager(conf); err != nil {
+	if db.vm, err = NewVersionManager(conf.Versions); err != nil {
 		return nil, err
 	}
 
 	switch dsn.Scheme {
 	case "leveldb":
-		// TODO: allow leveldb options to be passed to OpenFile
 		// TODO: multiple leveldb databases for different namespaces
 		if db.engine, err = leveldb.Open(dsn.Path, conf); err != nil {
 			return nil, err
@@ -70,7 +75,7 @@ func (db *DB) Close() error {
 // Object returns metadata associated with the latest object stored by the key.
 // Object is the Get function to use if you want to fetch tombstones, otherwise use Get
 // which will return a not found error.
-func (db *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Object(key []byte, options ...opts.Option) (_ *pb.Object, err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(true); err != nil {
 		return nil, err
@@ -100,7 +105,7 @@ func (db *DB) Object(key []byte, options ...opts.SetOptions) (_ *pb.Object, err 
 }
 
 // Get the latest version of the object stored by the key.
-func (db *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err error) {
+func (db *DB) Get(key []byte, options ...opts.Option) (value []byte, err error) {
 	var obj *pb.Object
 	if obj, err = db.Object(key, options...); err != nil {
 		return nil, err
@@ -120,7 +125,7 @@ func (db *DB) Get(key []byte, options ...opts.SetOptions) (value []byte, err err
 // Update an object directly in the database without modifying its version information.
 // Update is to Put as Object is to Get - use Update when manually modifying the data
 // store, for example during replication, but not for normal DB operations.
-func (db *DB) Update(obj *pb.Object, options ...opts.SetOptions) (err error) {
+func (db *DB) Update(obj *pb.Object, options ...opts.Option) (err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(false); err != nil {
 		return err
@@ -153,7 +158,7 @@ func (db *DB) Update(obj *pb.Object, options ...opts.SetOptions) (err error) {
 }
 
 // Put a new value to the specified key and update the version.
-func (db *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Put(key, value []byte, options ...opts.Option) (_ *pb.Object, err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(false); err != nil {
 		return nil, err
@@ -204,7 +209,7 @@ func (db *DB) Put(key, value []byte, options ...opts.SetOptions) (_ *pb.Object, 
 }
 
 // Delete the object represented by the key, creating a tombstone object.
-func (db *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err error) {
+func (db *DB) Delete(key []byte, options ...opts.Option) (_ *pb.Object, err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(false); err != nil {
 		return nil, err
@@ -215,11 +220,6 @@ func (db *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err 
 	var cfg *opts.Options
 	if cfg, err = opts.New(options...); err != nil {
 		return nil, err
-	}
-
-	// TODO: implement destroy
-	if cfg.Destroy {
-		return nil, errors.New("destroy is not implemented yet")
 	}
 
 	var data []byte
@@ -257,7 +257,7 @@ func (db *DB) Delete(key []byte, options ...opts.SetOptions) (_ *pb.Object, err 
 
 // Iter over a subset of keys specified by the prefix.
 // TODO: provide better mechanisms for iteration.
-func (db *DB) Iter(prefix []byte, options ...opts.SetOptions) (i iterator.Iterator, err error) {
+func (db *DB) Iter(prefix []byte, options ...opts.Option) (i iterator.Iterator, err error) {
 	// Collect the options
 	var cfg *opts.Options
 	if cfg, err = opts.New(options...); err != nil {
