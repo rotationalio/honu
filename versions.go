@@ -22,7 +22,7 @@ func NewVersionManager(conf config.ReplicaConfig) (v *VersionManager, err error)
 		// The common name
 		v.Owner = fmt.Sprintf("%d:%s", conf.PID, conf.Name)
 	} else {
-		// The owner name is just the pid:region in the last case
+		// The owner name is just the pid:region
 		v.Owner = fmt.Sprintf("%d:%s", conf.PID, conf.Region)
 	}
 
