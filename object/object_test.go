@@ -29,6 +29,8 @@ func TestVersionIsLater(t *testing.T) {
 	require.True(t, v1.IsLater(nil))
 	require.True(t, v1.IsLater(&VersionZero))
 	require.False(t, VersionZero.IsLater(v1))
+	require.False(t, VersionZero.IsLater(nil))
+	require.False(t, VersionZero.IsLater(&VersionZero))
 	require.True(t, v1.IsLater(&Version{Pid: 8, Version: 40}))
 	require.True(t, v1.IsLater(&Version{Pid: 9, Version: 42}))
 	require.False(t, v1.IsLater(&Version{Pid: 7, Version: 42}))

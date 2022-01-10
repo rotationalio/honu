@@ -21,7 +21,7 @@ func (v *Version) IsZero() bool {
 func (v *Version) IsLater(other *Version) bool {
 	// If other is nil, then we assume it represents the zero-valued version.
 	if other == nil {
-		return true
+		other = &VersionZero
 	}
 
 	// Version is monotonically increasing, if it's greater than the other, then this
