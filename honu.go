@@ -31,8 +31,10 @@ type DB struct {
 // specify protocol:////absolute/path/to/db.
 func Open(uri string, options ...config.Option) (db *DB, err error) {
 	// Create a configuration from the options passed in.
-	// TODO: do we really like this style of configuration?
-	conf := config.New(options...)
+	var conf config.Config
+	if conf, err = config.New(options...); err != nil {
+		return nil, err
+	}
 
 	var dsn *DSN
 	if dsn, err = ParseDSN(uri); err != nil {
@@ -123,7 +125,7 @@ func (db *DB) Get(key []byte, options ...opts.Option) (value []byte, err error) 
 // Update an object directly in the database without modifying its version information.
 // Update is to Put as Object is to Get - use Update when manually modifying the data
 // store, for example during replication, but not for normal DB operations.
-func (db *DB) Update(obj *pb.Object, options ...opts.SetOptions) (err error) {
+func (db *DB) Update(obj *pb.Object, options ...opts.Option) (err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(false); err != nil {
 		return err

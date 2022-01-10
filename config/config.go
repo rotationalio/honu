@@ -15,7 +15,7 @@ var DefaultConfig = Config{
 
 // New creates a configuration with the required options and can also be used to specify
 // optional configuration e.g. for engine-specific operations.
-func New(options ...Option) Config {
+func New(options ...Option) (_ Config, err error) {
 	// Create the default configuration in editable mode
 	conf := &Config{
 		Versions: ReplicaConfig{
@@ -27,11 +27,13 @@ func New(options ...Option) Config {
 
 	// Apply all options to the configuration
 	for _, opt := range options {
-		opt(conf)
+		if err = opt(conf); err != nil {
+			return Config{}, err
+		}
 	}
 
 	// Return the value of the configuration
-	return *conf
+	return *conf, nil
 }
 
 // Config specifies the options necessary to open a Honu database.
@@ -41,9 +43,12 @@ type Config struct {
 }
 
 // ReplicaConfig specifies the information needed for the Version manager to maintain
-// global object versioning and provenance. This is closely tied to a Replica's
-// configuration, e.g. the PID is the process ID of a running replica, the region is
-// where the replica is running, and the name is usually the hostname of the replica.
+// global object versioning and provenance. Honu is intended to support data replication
+// by versioning using Lamport scalars. These conflict-free version numbers are closely
+// tied to a replica's configuration (where a replica is a process that performs data
+// replication using Honu), e.g. the PID is the process ID of a running replica, the
+// region is where the replica is running, and the name is usually the hostname of the
+// replica.
 type ReplicaConfig struct {
 	PID    uint64 `split_words:"true" required:"false"`
 	Region string `split_words:"true" required:"false"`
@@ -51,20 +56,18 @@ type ReplicaConfig struct {
 }
 
 // Option modifies a configuration to add optional configuration items.
-type Option func(*Config)
+type Option func(*Config) error
 
-func WithReplica(pid uint64, region, name string) Option {
-	return func(cfg *Config) {
-		cfg.Versions = ReplicaConfig{
-			PID:    pid,
-			Region: region,
-			Name:   name,
-		}
+func WithReplica(conf ReplicaConfig) Option {
+	return func(cfg *Config) error {
+		cfg.Versions = conf
+		return nil
 	}
 }
 
 func WithLevelDB(opt *ldbopt.Options) Option {
-	return func(cfg *Config) {
+	return func(cfg *Config) error {
 		cfg.LDBOptions = opt
+		return nil
 	}
 }

@@ -34,11 +34,11 @@ var testNamespaces = []string{
 }
 
 // Returns a LevelDBEngine and the path where it was created.
-func setupLeveldbEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
+func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 	tempDir, err := ioutil.TempDir("", "leveldb-*")
 	require.NoError(t, err)
 
-	conf := config.New()
+	conf, _ := config.New()
 	engine, err := leveldb.Open(tempDir, conf)
 	if err != nil {
 		os.RemoveAll(tempDir)
@@ -80,7 +80,7 @@ func checkDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *te
 
 func TestLeveldbEngine(t *testing.T) {
 	// Setup a levelDB Engine.
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 	require.Equal(t, "leveldb", ldbEngine.Engine())
 
 	// Ensure the db was created.
@@ -112,7 +112,7 @@ func TestLeveldbEngine(t *testing.T) {
 }
 
 func TestLeveldbTransactions(t *testing.T) {
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 
 	// Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
@@ -155,7 +155,7 @@ func TestLeveldbTransactions(t *testing.T) {
 }
 
 func TestLevelDBIter(t *testing.T) {
-	ldbEngine, ldbPath := setupLeveldbEngine(t)
+	ldbEngine, ldbPath := setupLevelDBEngine(t)
 
 	// Teardown after finishing the test
 	defer os.RemoveAll(ldbPath)
