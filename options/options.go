@@ -28,6 +28,7 @@ type Options struct {
 	LevelDBWrite *ldb.WriteOptions
 	PebbleWrite  *pebble.WriteOptions
 	Namespace    string
+	Force        bool
 }
 
 // Defines the signature of functions accepted as parameters by Honu methods.
@@ -40,6 +41,14 @@ func WithNamespace(namespace string) Option {
 		if namespace != "" {
 			cfg.Namespace = namespace
 		}
+		return nil
+	}
+}
+
+// WithForce prevents validation checks from returning an error during accesses.
+func WithForce() Option {
+	return func(cfg *Options) error {
+		cfg.Force = true
 		return nil
 	}
 }

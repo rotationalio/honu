@@ -138,11 +138,32 @@ func (db *DB) Update(obj *pb.Object, options ...opts.Option) (err error) {
 		return err
 	}
 
-	// Check the namespace and that it matches the object
-	if cfg.Namespace == opts.NamespaceDefault {
-		cfg.Namespace = obj.Namespace
-	} else if cfg.Namespace != obj.Namespace {
-		return errors.New("options namespace does not match object namespace")
+	if !cfg.Force {
+		// Check the namespace and that it matches the object
+		if cfg.Namespace == opts.NamespaceDefault {
+			cfg.Namespace = obj.Namespace
+		} else if cfg.Namespace != obj.Namespace {
+			return errors.New("options namespace does not match object namespace")
+		}
+
+		// Check that the version is later than the version being written to disk
+		var (
+			prevData []byte
+			prev     = new(pb.Object)
+		)
+		if prevData, err = tx.Get(obj.Key, cfg); err != nil {
+			if !errors.Is(err, engine.ErrNotFound) {
+				return fmt.Errorf("could not check previous version: %v", err)
+			}
+		} else {
+			if err = proto.Unmarshal(prevData, prev); err != nil {
+				return fmt.Errorf("could not unmarshal previous version: %v", err)
+			}
+		}
+
+		if !obj.Version.IsLater(prev.Version) {
+			return fmt.Errorf("cannot update object, it is not a later version then the current object")
+		}
 	}
 
 	// Put the version directly to disk
