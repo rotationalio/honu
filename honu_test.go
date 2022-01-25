@@ -126,10 +126,28 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.Equal(t, "here", obj.Version.Region)
 
 		// Update with same namespace option should not error.
+		obj.Version.Version = 43
 		require.NoError(t, db.Update(obj, options.WithNamespace(namespace)))
 
 		// Update with wrong namespace should error
 		require.Error(t, db.Update(obj, options.WithNamespace("this is not the right thing")))
+
+		// Update with wrong namespace but with force should not error.
+		require.NoError(t, db.Update(obj, options.WithNamespace("trashcan"), options.WithForce()))
+
+		// Update with the same version should error.
+		require.Error(t, db.Update(obj, options.WithNamespace(namespace)))
+
+		// Update with an earlier version should error
+		obj.Version.Version = 7
+		require.Error(t, db.Update(obj, options.WithNamespace(namespace)))
+
+		// Update with an earlier version with force should not error.
+		require.NoError(t, db.Update(obj, options.WithNamespace(namespace), options.WithForce()))
+
+		// Update an object that does not exist should not error.
+		obj.Key = []byte("secretobjinvisible")
+		require.NoError(t, db.Update(obj, options.WithNamespace(namespace)))
 
 		// TODO: figure out what to do with this testcase.
 		// Iter currently grabs the namespace by splitting
