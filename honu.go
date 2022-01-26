@@ -119,31 +119,71 @@ func (db *DB) Get(key []byte, options ...opts.Option) (value []byte, err error) 
 
 	// Return the wrapped data
 	return obj.Data, nil
+}
 
+// UpdateType is an intermediate solution to tracking what's happening to the version
+// history when direct modifications are applied to the database.
+// NOTE: this data type is subject to change in later versions and should be treated
+// as a prototype only in production code.
+type UpdateType uint8
+
+const (
+	UpdateNoChange UpdateType = iota // No change occurred (nothing was written to disk)
+	UpdateForced                     // The update was forced, so the previous version was not checked
+	UpdateLinear                     // The previous version is the parent of the updating version
+	UpdateStomp                      // The previous version is concurrent but has a lower precedence than the updating version
+	UpdateSkip                       // The previous version is later but is not concurrent nor linear from the updating version
+
+)
+
+func (u UpdateType) String() string {
+	switch u {
+	case UpdateNoChange:
+		return "unchanged"
+	case UpdateForced:
+		return "forced"
+	case UpdateLinear:
+		return "linear"
+	case UpdateStomp:
+		return "stomped"
+	case UpdateSkip:
+		return "skipped"
+	default:
+		return "unknown"
+	}
 }
 
 // Update an object directly in the database without modifying its version information.
 // Update is to Put as Object is to Get - use Update when manually modifying the data
-// store, for example during replication, but not for normal DB operations.
-func (db *DB) Update(obj *pb.Object, options ...opts.Option) (err error) {
+// store, for example during replication, but not for normal DB operations. Update also
+// returns the type of update that ocurred, relative to the previous version.
+func (db *DB) Update(obj *pb.Object, options ...opts.Option) (update UpdateType, err error) {
 	var tx engine.Transaction
 	if tx, err = db.engine.Begin(false); err != nil {
-		return err
+		return UpdateNoChange, err
 	}
 	defer tx.Finish()
 
 	// Collect the options
 	var cfg *opts.Options
 	if cfg, err = opts.New(options...); err != nil {
-		return err
+		return UpdateNoChange, err
+	}
+
+	// If the default namespace is specified use the object's namespace to ensure that
+	// if the user did not supply Namespace, Update still works. If the object was
+	// already in the default namespace, this should not cause a change to happen. There
+	// is an edge case where the user supplies options.WithNamespace("default") and an
+	// object that is not in the default namespace and the user option will be ignored
+	// in favor of the object's original namespace; but this is an unlikely case.
+	if cfg.Namespace == opts.NamespaceDefault {
+		cfg.Namespace = obj.Namespace
 	}
 
 	if !cfg.Force {
 		// Check the namespace and that it matches the object
-		if cfg.Namespace == opts.NamespaceDefault {
-			cfg.Namespace = obj.Namespace
-		} else if cfg.Namespace != obj.Namespace {
-			return errors.New("options namespace does not match object namespace")
+		if cfg.Namespace != obj.Namespace {
+			return UpdateNoChange, errors.New("options namespace does not match object namespace")
 		}
 
 		// Check that the version is later than the version being written to disk
@@ -153,29 +193,46 @@ func (db *DB) Update(obj *pb.Object, options ...opts.Option) (err error) {
 		)
 		if prevData, err = tx.Get(obj.Key, cfg); err != nil {
 			if !errors.Is(err, engine.ErrNotFound) {
-				return fmt.Errorf("could not check previous version: %v", err)
+				return UpdateNoChange, fmt.Errorf("could not check previous version: %v", err)
 			}
 		} else {
 			if err = proto.Unmarshal(prevData, prev); err != nil {
-				return fmt.Errorf("could not unmarshal previous version: %v", err)
+				return UpdateNoChange, fmt.Errorf("could not unmarshal previous version: %v", err)
 			}
 		}
 
 		if !obj.Version.IsLater(prev.Version) {
-			return fmt.Errorf("cannot update object, it is not a later version then the current object")
+			return UpdateNoChange, fmt.Errorf("cannot update object, it is not a later version then the current object")
 		}
+
+		// Determine the update type based on the previous version
+		// NOTE: all update conditions imply the current version is later than previous
+		switch {
+		case obj.Version.Stomps(prev.Version):
+			update = UpdateStomp
+		case obj.Version.Skips(prev.Version):
+			update = UpdateSkip
+		case obj.Version.LinearFrom(prev.Version):
+			update = UpdateLinear
+		default:
+			return UpdateNoChange, fmt.Errorf("cannot determine update relationship in the version history")
+		}
+
+	} else {
+		// Report that the update was forced
+		update = UpdateForced
 	}
 
 	// Put the version directly to disk
 	var data []byte
 	if data, err = proto.Marshal(obj); err != nil {
-		return err
+		return UpdateNoChange, err
 	}
 
 	if err = tx.Put(obj.Key, data, cfg); err != nil {
-		return err
+		return UpdateNoChange, err
 	}
-	return nil
+	return update, nil
 }
 
 // Put a new value to the specified key and update the version.

@@ -1,13 +1,16 @@
 package honu_test
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
+	"github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +111,7 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.Equal(t, uint64(3), obj.Version.Version)
 		require.False(t, obj.Tombstone())
 
-		// Attempt to directly update the object in the database
+		// Attempt to directly update the object in the database with a later version
 		obj.Data = []byte("directly updated")
 		obj.Owner = "me"
 		obj.Version.Parent = nil
@@ -116,38 +119,8 @@ func TestLevelDBInteractions(t *testing.T) {
 		obj.Version.Pid = 93
 		obj.Version.Region = "here"
 		obj.Version.Tombstone = false
-		require.NoError(t, db.Update(obj))
-
-		obj, err = db.Object(key, options.WithNamespace(namespace))
+		_, err = db.Update(obj)
 		require.NoError(t, err)
-		require.Equal(t, uint64(42), obj.Version.Version)
-		require.Equal(t, uint64(93), obj.Version.Pid)
-		require.Equal(t, "me", obj.Owner)
-		require.Equal(t, "here", obj.Version.Region)
-
-		// Update with same namespace option should not error.
-		obj.Version.Version = 43
-		require.NoError(t, db.Update(obj, options.WithNamespace(namespace)))
-
-		// Update with wrong namespace should error
-		require.Error(t, db.Update(obj, options.WithNamespace("this is not the right thing")))
-
-		// Update with wrong namespace but with force should not error.
-		require.NoError(t, db.Update(obj, options.WithNamespace("trashcan"), options.WithForce()))
-
-		// Update with the same version should error.
-		require.Error(t, db.Update(obj, options.WithNamespace(namespace)))
-
-		// Update with an earlier version should error
-		obj.Version.Version = 7
-		require.Error(t, db.Update(obj, options.WithNamespace(namespace)))
-
-		// Update with an earlier version with force should not error.
-		require.NoError(t, db.Update(obj, options.WithNamespace(namespace), options.WithForce()))
-
-		// Update an object that does not exist should not error.
-		obj.Key = []byte("secretobjinvisible")
-		require.NoError(t, db.Update(obj, options.WithNamespace(namespace)))
 
 		// TODO: figure out what to do with this testcase.
 		// Iter currently grabs the namespace by splitting
@@ -188,4 +161,168 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.NoError(t, iter.Error())
 		iter.Release()
 	}
+}
+
+func TestUpdate(t *testing.T) {
+	// Create a test database to attempt to update
+	db, tmpDir := setupHonuDB(t)
+
+	// Cleanup when we're done with the test
+	defer os.RemoveAll(tmpDir)
+	defer db.Close()
+
+	// Create a random object in the database to start update tests on
+	key := randomData(32)
+	namespace := "yeti"
+	root, err := db.Put(key, randomData(96), options.WithNamespace(namespace))
+	require.NoError(t, err, "could not put random data")
+
+	// Generate new1 - a linear object from root as though it were from a different replica
+	new1 := &object.Object{
+		Key:       key,
+		Namespace: namespace,
+		Version: &object.Version{
+			Pid:     113,
+			Version: 2,
+			Parent:  root.Version,
+		},
+		Region: "the-void",
+		Owner:  root.Owner,
+		Data:   randomData(112),
+	}
+
+	// Should be able to update with no namespace option
+	update, err := db.Update(new1)
+	require.NoError(t, err, "could not update db with new1")
+	require.Equal(t, honu.UpdateLinear, update, "expected new1 update to be linear")
+	requireObjectEqual(t, db, new1, key, namespace)
+
+	// Should not be be able to update with the same version twice, since it is now no
+	// longer later than previous version (it is the equal version on disk).
+	update, err = db.Update(new1)
+	require.EqualError(t, err, "cannot update object, it is not a later version then the current object")
+	require.Equal(t, honu.UpdateNoChange, update)
+
+	// Should be able to force the update to apply the same object back to disk.
+	update, err = db.Update(new1, options.WithForce())
+	require.NoError(t, err, "could not force update with new1")
+	require.Equal(t, honu.UpdateForced, update)
+
+	// Generate new2 - an object stomping new1 as though it were from a different replica
+	new2 := &object.Object{
+		Key:       key,
+		Namespace: namespace,
+		Version: &object.Version{
+			Pid:     42,
+			Version: 2,
+			Parent:  root.Version,
+		},
+		Region: "the-other-void",
+		Owner:  root.Owner,
+		Data:   randomData(112),
+	}
+
+	// Update with the wrong namespace should error
+	update, err = db.Update(new2, options.WithNamespace("this is not the right namespace for sure"))
+	require.EqualError(t, err, "options namespace does not match object namespace")
+	require.Equal(t, honu.UpdateNoChange, update)
+	requireObjectEqual(t, db, new1, key, namespace)
+
+	// Update with the wrong namespace but with force should not error and create a new object
+	// NOTE: this is kind of a wild force since now the object has the wrong namespace metadata.
+	update, err = db.Update(new2, options.WithNamespace("trashcan"), options.WithForce())
+	require.NoError(t, err)
+	require.Equal(t, honu.UpdateForced, update)
+	requireObjectEqual(t, db, new1, key, namespace)
+	requireObjectEqual(t, db, new2, key, "trashcan")
+
+	// Update with same namespace option should not error.
+	update, err = db.Update(new2, options.WithNamespace(namespace))
+	require.NoError(t, err, "could not update new2")
+	require.Equal(t, honu.UpdateStomp, update)
+	requireObjectEqual(t, db, new2, key, namespace)
+
+	// Generate new3 - an object skipping new2 as though it were from the same replica
+	new3 := &object.Object{
+		Key:       key,
+		Namespace: namespace,
+		Version: &object.Version{
+			Pid:     42,
+			Version: 12,
+			Parent:  root.Version,
+		},
+		Region: "the-other-void",
+		Owner:  root.Owner,
+		Data:   randomData(112),
+	}
+
+	// Ensure UpdateSkip is returned
+	update, err = db.Update(new3)
+	require.NoError(t, err, "could not update new3")
+	require.Equal(t, honu.UpdateSkip, update)
+	requireObjectEqual(t, db, new3, key, namespace)
+
+	// Update with an earlier version should error
+	update, err = db.Update(new1)
+	require.EqualError(t, err, "cannot update object, it is not a later version then the current object")
+	require.Equal(t, honu.UpdateNoChange, update)
+	requireObjectEqual(t, db, new3, key, namespace)
+
+	// Should be able to force the update to apply the earlier object back to disk
+	update, err = db.Update(new1, options.WithForce())
+	require.NoError(t, err, "could not force update with new1")
+	require.Equal(t, honu.UpdateForced, update)
+	requireObjectEqual(t, db, new1, key, namespace)
+
+	// Update an object that does not exist should not error.
+	stranger := &object.Object{
+		Key:       randomData(18),
+		Namespace: "default",
+		Version: &object.Version{
+			Pid:     1,
+			Version: 1,
+			Parent:  nil,
+		},
+		Region: "the-void",
+		Owner:  "me",
+		Data:   randomData(8),
+	}
+
+	update, err = db.Update(stranger)
+	require.NoError(t, err)
+	require.Equal(t, honu.UpdateLinear, update)
+}
+
+// Helper assertion function to check to make sure an object matches what is in the database
+func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key []byte, namespace string) {
+	actual, err := db.Object(key, options.WithNamespace(namespace))
+	require.NoError(t, err, "could not fetch expected object from the database")
+
+	// NOTE: we cannot do a require.Equal(t, expected, actual) because the test will hang
+	// it's not clear if there is a recursive loop with version comparisons or some other
+	// deep equality is causing the problem. Instead we directly compare the data.
+	require.True(t, bytes.Equal(expected.Key, actual.Key), "key is not equal")
+	require.Equal(t, expected.Namespace, actual.Namespace, "namespace not equal")
+	require.Equal(t, expected.Region, actual.Region, "region not equal")
+	require.Equal(t, expected.Owner, actual.Owner, "owner not equal")
+	require.True(t, expected.Version.Equal(actual.Version), "versions not equal")
+	require.Equal(t, expected.Version.Region, actual.Version.Region, "version region not equal")
+	require.Equal(t, expected.Version.Tombstone, actual.Version.Tombstone, "version tombstone not the same")
+	if expected.Version.Parent != nil {
+		require.True(t, expected.Version.Parent.Equal(actual.Version.Parent), "parents not equal")
+		require.Equal(t, expected.Version.Parent.Region, actual.Version.Parent.Region, "parent regions not equal")
+		require.Equal(t, expected.Version.Parent.Tombstone, actual.Version.Parent.Tombstone, "parent tombstone not the same")
+	} else {
+		require.Nil(t, actual.Version.Parent, "expected parent is nil")
+	}
+	require.True(t, bytes.Equal(expected.Data, actual.Data), "value is not equal")
+}
+
+// Helper function to generate random data
+func randomData(len int) []byte {
+	data := make([]byte, len)
+	if _, err := rand.Read(data); err != nil {
+		panic(err)
+	}
+	return data
 }
