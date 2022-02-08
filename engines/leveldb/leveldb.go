@@ -34,6 +34,12 @@ type Transaction struct {
 	ro bool
 }
 
+// Returns the underlying database object for direct access by the caller, to enable
+// backups, etc.
+func (db *LevelDBEngine) DB() *leveldb.DB {
+	return db.ldb
+}
+
 // Returns the name of the engine type.
 func (db *LevelDBEngine) Engine() string {
 	return "leveldb"

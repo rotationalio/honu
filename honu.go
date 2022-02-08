@@ -349,3 +349,8 @@ func (db *DB) Iter(prefix []byte, options ...opts.Option) (i iterator.Iterator, 
 	}
 	return iter.Iter(prefix, cfg)
 }
+
+// Returns the underlying DB engine for direct access.
+func (db *DB) Engine() engine.Engine {
+	return db.engine
+}
