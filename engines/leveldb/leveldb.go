@@ -192,7 +192,7 @@ func (db *LevelDBEngine) Iter(prefix []byte, options *opts.Options) (i iterator.
 	if len(prefix) > 0 {
 		slice = util.BytesPrefix(prefix)
 	}
-	return NewLevelDBIterator(db.ldb.NewIterator(slice, options.LevelDBRead), options.Namespace), nil
+	return NewLevelDBIterator(db.ldb.NewIterator(slice, options.LevelDBRead), options), nil
 }
 
 var nssep = []byte("::")

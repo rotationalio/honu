@@ -14,6 +14,8 @@ func TestHonuOptions(t *testing.T) {
 	opts, err := options.New()
 	require.NoError(t, err, "could not create options")
 	require.Equal(t, options.NamespaceDefault, opts.Namespace)
+	require.False(t, opts.Force)
+	require.False(t, opts.Tombstones)
 
 	// Test setting multiple options
 	opts, err = options.New(options.WithLevelDBRead(&ldb.ReadOptions{Strict: ldb.StrictJournal}), options.WithNamespace("foo"))
@@ -26,6 +28,12 @@ func TestHonuOptions(t *testing.T) {
 	opts, err = options.New(options.WithNamespace(""))
 	require.NoError(t, err, "could not create options with empty string namespace")
 	require.Equal(t, options.NamespaceDefault, opts.Namespace)
+
+	// Test boolean options
+	opts, err = options.New(options.WithForce(), options.WithTombstones())
+	require.NoError(t, err, "boolean options returned an error")
+	require.True(t, opts.Force)
+	require.True(t, opts.Tombstones)
 }
 
 func TestLevelDBReadOptions(t *testing.T) {

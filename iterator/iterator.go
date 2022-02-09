@@ -1,9 +1,6 @@
 /*
 Package iterator provides an interface and implementations to traverse over the contents
 of an embedded database while maintaining and reading replicated object metadata.
-
-TODO: Implement IteratorSeeker interface from leveldb
-TODO: Implement sqliteIterator and genericize rows with key/values
 */
 package iterator
 
@@ -23,6 +20,7 @@ var (
 // a leveldb iterator or a sqlite rows context, fetching one row at a time in a Next
 // loop. The Iterator also provides access to the versioned metadata for low-level
 // interactions with the replicated data types.
+// TODO: Implement IteratorSeeker interface from leveldb
 type Iterator interface {
 	// Next moves the iterator to the next key/value pair or row.
 	// It returns false if the iterator has been exhausted.

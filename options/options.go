@@ -29,6 +29,7 @@ type Options struct {
 	PebbleWrite  *pebble.WriteOptions
 	Namespace    string
 	Force        bool
+	Tombstones   bool
 }
 
 // Defines the signature of functions accepted as parameters by Honu methods.
@@ -49,6 +50,14 @@ func WithNamespace(namespace string) Option {
 func WithForce() Option {
 	return func(cfg *Options) error {
 		cfg.Force = true
+		return nil
+	}
+}
+
+// WithTombstones causes the iterator to include tombstones as its iterating.
+func WithTombstones() Option {
+	return func(cfg *Options) error {
+		cfg.Tombstones = true
 		return nil
 	}
 }

@@ -1,6 +1,7 @@
 package leveldb_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -15,12 +16,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// a test set of key/value pairs used to evaluate iteration
+// note because :: is the namespace separator in leveldb, we want to ensure that keys
+// with colons are correctly iterated on.
 var pairs = [][]string{
 	{"aa", "first"},
 	{"ab", "second"},
-	{"ba", "third"},
-	{"bb", "fourth"},
-	{"bc", "fifth"},
+	{"b::a", "third"},
+	{"b::b", "fourth"},
+	{"b::c", "fifth"},
 	{"ca", "sixth"},
 	{"cb", "seventh"},
 }
@@ -44,11 +48,19 @@ func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 		os.RemoveAll(tempDir)
 	}
 	require.NoError(t, err)
+
+	// Add a cleanup function to ensure the fixture is deleted after tests
+	t.Cleanup(func() {
+		// Teardown after finishing the test
+		engine.Close()
+		os.RemoveAll(tempDir)
+		fmt.Printf("cleaned up %s\n", tempDir)
+	})
+
 	return engine, tempDir
 }
 
-// Creates an options.Options struct with namespace set and returns
-// a pointer to it.
+// Creates an options.Options struct with namespace set and returns a pointer to it.
 func namespaceOpts(namespace string, t *testing.T) *options.Options {
 	opts, err := options.New(options.WithNamespace(namespace))
 	require.NoError(t, err)
@@ -78,17 +90,13 @@ func checkDelete(ldbStore engine.Store, opts *options.Options, key []byte, t *te
 	require.Empty(t, value)
 }
 
-func TestLeveldbEngine(t *testing.T) {
+func TestLevelDBEngine(t *testing.T) {
 	// Setup a levelDB Engine.
 	ldbEngine, ldbPath := setupLevelDBEngine(t)
 	require.Equal(t, "leveldb", ldbEngine.Engine())
 
 	// Ensure the db was created.
 	require.DirExists(t, ldbPath)
-
-	// Teardown after finishing the test.
-	defer os.RemoveAll(ldbPath)
-	defer ldbEngine.Close()
 
 	// Use a constant key to ensure namespaces
 	// are working correctly.
@@ -111,12 +119,8 @@ func TestLeveldbEngine(t *testing.T) {
 	}
 }
 
-func TestLeveldbTransactions(t *testing.T) {
-	ldbEngine, ldbPath := setupLevelDBEngine(t)
-
-	// Teardown after finishing the test
-	defer os.RemoveAll(ldbPath)
-	defer ldbEngine.Close()
+func TestLevelDBTransactions(t *testing.T) {
+	ldbEngine, _ := setupLevelDBEngine(t)
 
 	// Use a constant key to ensure namespaces
 	// are working correctly.
@@ -155,20 +159,9 @@ func TestLeveldbTransactions(t *testing.T) {
 }
 
 func TestLevelDBIter(t *testing.T) {
-	ldbEngine, ldbPath := setupLevelDBEngine(t)
-
-	// Teardown after finishing the test
-	defer os.RemoveAll(ldbPath)
-	defer ldbEngine.Close()
+	ldbEngine, _ := setupLevelDBEngine(t)
 
 	for _, namespace := range testNamespaces {
-		// TODO: figure out what to do with this testcase.
-		// Iter currently grabs the namespace by splitting
-		// on :: and grabbing the first string, so it only
-		// grabs "namespace".
-		if namespace == "namespace::with::colons" {
-			continue
-		}
 		// Add data to the database to iterate over.
 		opts := namespaceOpts(namespace, t)
 
@@ -223,7 +216,16 @@ func addIterPairsToDB(ldbStore engine.Store, opts *options.Options, pairs [][]st
 		obj := &pb.Object{
 			Key:       key,
 			Namespace: opts.Namespace,
-			Data:      value,
+			Version: &pb.Version{
+				Pid:       1,
+				Version:   1,
+				Region:    "testing",
+				Parent:    nil,
+				Tombstone: false,
+			},
+			Region: "testing",
+			Owner:  "testing",
+			Data:   value,
 		}
 
 		data, err := proto.Marshal(obj)
