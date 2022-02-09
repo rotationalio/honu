@@ -10,6 +10,7 @@ import (
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
+	"github.com/rotationalio/honu/engines/leveldb"
 	"github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,7 @@ func TestLevelDBInteractions(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	defer db.Close()
 
+	totalKeys := 0
 	for _, namespace := range testNamespaces {
 		// Use a constant key to ensure namespaces
 		// are working correctly.
@@ -71,6 +73,7 @@ func TestLevelDBInteractions(t *testing.T) {
 		obj, err := db.Put(key, expectedValue, options.WithNamespace(namespace))
 		require.NoError(t, err)
 		require.False(t, obj.Tombstone())
+		totalKeys++
 
 		// Get the version of foo from the database
 		value, err := db.Get(key, options.WithNamespace(namespace))
@@ -136,6 +139,7 @@ func TestLevelDBInteractions(t *testing.T) {
 			value := []byte(pair[1])
 			_, err := db.Put(key, value, options.WithNamespace(namespace))
 			require.NoError(t, err)
+			totalKeys++
 		}
 
 		// Iterate over a prefix in the database
@@ -147,7 +151,6 @@ func TestLevelDBInteractions(t *testing.T) {
 			require.Equal(t, string(key), pairs[collected+2][0])
 
 			value := iter.Value()
-			fmt.Println(value)
 			require.Equal(t, string(value), string(pairs[collected+2][1]))
 
 			obj, err := iter.Object()
@@ -161,6 +164,20 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.NoError(t, iter.Error())
 		iter.Release()
 	}
+
+	// Test iteration over all the namespaces
+	// FIXME: This is skipping the undeleted values
+	engine, ok := db.Engine().(*leveldb.LevelDBEngine)
+	require.True(t, ok)
+	ldb := engine.DB()
+	iter := ldb.NewIterator(nil, nil)
+	collected := 0
+	for iter.Next() {
+		collected++
+	}
+	require.Equal(t, totalKeys, collected)
+	require.NoError(t, iter.Error())
+	iter.Release()
 }
 
 func TestUpdate(t *testing.T) {
