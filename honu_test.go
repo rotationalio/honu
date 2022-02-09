@@ -401,6 +401,73 @@ func TestTombstones(t *testing.T) {
 	}
 }
 
+func TestTombstonesMultipleNamespaces(t *testing.T) {
+	// Create a test database
+	db, _ := setupHonuDB(t)
+	namespaces := []string{"graveyard", "cemetery", "catacombs"}
+
+	// Assert that there is nothing in the namespaces as an initial check
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 0)
+	}
+	requireDatabaseLen(t, db, 0)
+
+	// Create a list of keys with integer values
+	keys := make([][]byte, 0, 100)
+	for i := 0; i < 100; i++ {
+		key := []byte(fmt.Sprintf("%00X", i+1))
+		keys = append(keys, key)
+	}
+
+	// Add data to the database
+	for _, key := range keys {
+		for _, ns := range namespaces {
+			db.Put(key, randomData(256), options.WithNamespace(ns))
+		}
+	}
+
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+
+	// Delete all even keys
+	for i, key := range keys {
+		if i%2 == 0 {
+			for _, ns := range namespaces {
+				db.Delete(key, options.WithNamespace(ns))
+			}
+		}
+	}
+
+	// Ensure that the iterator returns 50 items but that there are still 100 objects
+	// including tombstones still stored in the database. Also ensure that the entire
+	// database still contains 300 objects.
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 50)
+		requireGraveyardLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+
+	// "Resurrect" every 4th tombstone and give it a new value
+	for i, key := range keys {
+		if i%4 == 0 {
+			for _, ns := range namespaces {
+				db.Put(key, randomData(192), options.WithNamespace(ns))
+			}
+		}
+	}
+
+	// Ensure that the iterator returns 75 items but that there are still 100 objects
+	// including tombstones still stored in the database. Also ensure that the entire
+	// database still contains 300 objects.
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 75)
+		requireGraveyardLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+}
+
 // Helper assertion function to check to make sure an object matches what is in the database
 func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key []byte, namespace string) {
 	actual, err := db.Object(key, options.WithNamespace(namespace))
