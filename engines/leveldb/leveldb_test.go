@@ -1,7 +1,6 @@
 package leveldb_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -54,7 +53,6 @@ func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
 		// Teardown after finishing the test
 		engine.Close()
 		os.RemoveAll(tempDir)
-		fmt.Printf("cleaned up %s\n", tempDir)
 	})
 
 	return engine, tempDir

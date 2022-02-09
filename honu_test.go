@@ -40,22 +40,20 @@ var testNamespaces = []string{
 
 func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "honuldb-*")
+	tmpDir, err := ioutil.TempDir("", "honudb-*")
 	require.NoError(t, err)
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
 	db, err = honu.Open(uri, config.WithReplica(config.ReplicaConfig{PID: 8, Region: "us-southwest-16", Name: "testing"}))
-	require.NoError(t, err)
 	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
 		os.RemoveAll(tmpDir)
 	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		db.Close()
 		os.RemoveAll(tmpDir)
-		fmt.Printf("cleaned up %s\n", tmpDir)
 	})
 
 	return db, tmpDir

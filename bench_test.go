@@ -1,7 +1,6 @@
 package honu_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -22,26 +21,26 @@ var (
 
 func setupLevelDB(t testing.TB) (*leveldb.DB, string) {
 	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "honuldb-*")
+	tmpDir, err := ioutil.TempDir("", "leveldb-*")
 	require.NoError(t, err)
 
 	// Open a leveldb database directly without honu wrapper
 	db, err := leveldb.OpenFile(tmpDir, nil)
-	require.NoError(t, err)
 	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
 		os.RemoveAll(tmpDir)
 	}
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		db.Close()
+		os.RemoveAll(tmpDir)
+	})
+
 	return db, tmpDir
 }
 
 func BenchmarkHonuGet(b *testing.B) {
-	db, tmpDir := setupHonuDB(b)
-
-	// Cleanup when we're done with the test
-	// NOTE: defers are evaluated in FIFO order, so this ensures the db is closed first then the directory deleted
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -63,11 +62,7 @@ func BenchmarkHonuGet(b *testing.B) {
 }
 
 func BenchmarkLevelDBGet(b *testing.B) {
-	db, tmpDir := setupLevelDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupLevelDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -88,11 +83,7 @@ func BenchmarkLevelDBGet(b *testing.B) {
 }
 
 func BenchmarkHonuPut(b *testing.B) {
-	db, tmpDir := setupHonuDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -110,11 +101,7 @@ func BenchmarkHonuPut(b *testing.B) {
 }
 
 func BenchmarkLevelDBPut(b *testing.B) {
-	db, tmpDir := setupLevelDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupLevelDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -132,11 +119,7 @@ func BenchmarkLevelDBPut(b *testing.B) {
 }
 
 func BenchmarkHonuDelete(b *testing.B) {
-	db, tmpDir := setupHonuDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -158,11 +141,7 @@ func BenchmarkHonuDelete(b *testing.B) {
 }
 
 func BenchmarkLevelDBDelete(b *testing.B) {
-	db, tmpDir := setupLevelDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupLevelDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
@@ -183,11 +162,7 @@ func BenchmarkLevelDBDelete(b *testing.B) {
 }
 
 func BenchmarkHonuIter(b *testing.B) {
-	db, tmpDir := setupHonuDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(b)
 
 	// Create a key and value
 	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
@@ -219,11 +194,7 @@ func BenchmarkHonuIter(b *testing.B) {
 }
 
 func BenchmarkLevelDBIter(b *testing.B) {
-	db, tmpDir := setupLevelDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupLevelDB(b)
 
 	// Create a key and value
 	for _, key := range []string{"aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj"} {
@@ -253,11 +224,7 @@ func BenchmarkLevelDBIter(b *testing.B) {
 }
 
 func BenchmarkHonuObject(b *testing.B) {
-	db, tmpDir := setupHonuDB(b)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(b)
 
 	// Create a key and value
 	key := []byte("foo")
