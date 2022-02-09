@@ -16,12 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// a test set of key/value pairs used to evaluate iteration
+// note because :: is the namespace separator in leveldb, we want to ensure that keys
+// with colons are correctly iterated on.
 var pairs = [][]string{
 	{"aa", "first"},
 	{"ab", "second"},
-	{"ba", "third"},
-	{"bb", "fourth"},
-	{"bc", "fifth"},
+	{"b::a", "third"},
+	{"b::b", "fourth"},
+	{"b::c", "fifth"},
 	{"ca", "sixth"},
 	{"cb", "seventh"},
 }
@@ -37,26 +40,27 @@ var testNamespaces = []string{
 
 func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "honuldb-*")
+	tmpDir, err := ioutil.TempDir("", "honudb-*")
 	require.NoError(t, err)
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
 	db, err = honu.Open(uri, config.WithReplica(config.ReplicaConfig{PID: 8, Region: "us-southwest-16", Name: "testing"}))
-	require.NoError(t, err)
 	if err != nil && tmpDir != "" {
-		fmt.Println(tmpDir)
 		os.RemoveAll(tmpDir)
 	}
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		db.Close()
+		os.RemoveAll(tmpDir)
+	})
+
 	return db, tmpDir
 }
 
 func TestLevelDBInteractions(t *testing.T) {
-	db, tmpDir := setupHonuDB(t)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(t)
 
 	totalKeys := 0
 	for _, namespace := range testNamespaces {
@@ -125,14 +129,6 @@ func TestLevelDBInteractions(t *testing.T) {
 		_, err = db.Update(obj)
 		require.NoError(t, err)
 
-		// TODO: figure out what to do with this testcase.
-		// Iter currently grabs the namespace by splitting
-		// on :: and grabbing the first string, so it only
-		// grabs "namespace".
-		if namespace == "namespace::with::colons" {
-			continue
-		}
-
 		// Put a range of data into the database
 		for _, pair := range pairs {
 			key := []byte(pair[0])
@@ -166,27 +162,14 @@ func TestLevelDBInteractions(t *testing.T) {
 	}
 
 	// Test iteration over all the namespaces
-	// FIXME: This is skipping the undeleted values
-	engine, ok := db.Engine().(*leveldb.LevelDBEngine)
-	require.True(t, ok)
-	ldb := engine.DB()
-	iter := ldb.NewIterator(nil, nil)
-	collected := 0
-	for iter.Next() {
-		collected++
-	}
-	require.Equal(t, totalKeys, collected)
-	require.NoError(t, iter.Error())
-	iter.Release()
+	_, ok := db.Engine().(*leveldb.LevelDBEngine)
+	require.True(t, ok, "the engine type returned should be a leveldb.DB")
+	requireDatabaseLen(t, db, totalKeys)
 }
 
 func TestUpdate(t *testing.T) {
 	// Create a test database to attempt to update
-	db, tmpDir := setupHonuDB(t)
-
-	// Cleanup when we're done with the test
-	defer os.RemoveAll(tmpDir)
-	defer db.Close()
+	db, _ := setupHonuDB(t)
 
 	// Create a random object in the database to start update tests on
 	key := randomData(32)
@@ -310,6 +293,179 @@ func TestUpdate(t *testing.T) {
 	require.Equal(t, honu.UpdateLinear, update)
 }
 
+func TestTombstones(t *testing.T) {
+	// Create a test database
+	db, _ := setupHonuDB(t)
+
+	// Assert that there is nothing in the namespace as an initial check
+	requireNamespaceLen(t, db, "graveyard", 0)
+	requireDatabaseLen(t, db, 0)
+
+	// Create a list of keys with integer values
+	keys := make([][]byte, 0, 20)
+	for i := 0; i < 20; i++ {
+		key := []byte(fmt.Sprintf("%00X", i+1))
+		keys = append(keys, key)
+	}
+
+	// Add data to the database
+	for _, key := range keys {
+		db.Put(key, randomData(256), options.WithNamespace("graveyard"))
+	}
+	requireNamespaceLen(t, db, "graveyard", 20)
+	requireDatabaseLen(t, db, 20)
+
+	// Delete all even keys
+	for i, key := range keys {
+		if i%2 == 0 {
+			db.Delete(key, options.WithNamespace("graveyard"))
+		}
+	}
+
+	// Ensure that the iterator returns 10 items but that there are still 20 objects
+	// including tombstones still stored in the database.
+	requireNamespaceLen(t, db, "graveyard", 10)
+	requireGraveyardLen(t, db, "graveyard", 20)
+	requireDatabaseLen(t, db, 20)
+
+	// Sanity check, attempt to get Get all keys and verify tombstones
+	for i, key := range keys {
+		if i%2 == 0 {
+			// This is a tombstone
+			val, err := db.Get(key, options.WithNamespace("graveyard"))
+			require.EqualError(t, err, "not found", "tombstone did not return a not found error")
+			require.Nil(t, val, "tombstone returned a non nil value")
+
+			obj, err := db.Object(key, options.WithNamespace("graveyard"))
+			require.NoError(t, err, "tombstone did not return an object")
+			require.True(t, obj.Tombstone())
+		} else {
+			// Not a tombstone
+			val, err := db.Get(key, options.WithNamespace("graveyard"))
+			require.NoError(t, err, "a live object returned error on get")
+			require.Len(t, val, 256)
+
+			obj, err := db.Object(key, options.WithNamespace("graveyard"))
+			require.NoError(t, err, "live object did not return an object")
+			require.False(t, obj.Tombstone())
+		}
+	}
+
+	// "Resurrect" every 4th tombstone and give it a new value
+	for i, key := range keys {
+		if i%4 == 0 {
+			db.Put(key, randomData(192), options.WithNamespace("graveyard"))
+		}
+	}
+
+	// Ensure that the iterator returns 15 items but that there are still 20 objects
+	// including tombstones still stored in the database.
+	requireNamespaceLen(t, db, "graveyard", 15)
+	requireGraveyardLen(t, db, "graveyard", 20)
+	requireDatabaseLen(t, db, 20)
+
+	// Sanity check, attempt to get Get all keys and verify tombstones and undead keys
+	for i, key := range keys {
+		if i%2 == 0 {
+			if i%4 == 0 {
+				// This is an undead version
+				val, err := db.Get(key, options.WithNamespace("graveyard"))
+				require.NoError(t, err, "undead object returned error on get")
+				require.Len(t, val, 192)
+
+				obj, err := db.Object(key, options.WithNamespace("graveyard"))
+				require.NoError(t, err, "undead object did not return an object")
+				require.False(t, obj.Tombstone())
+			} else {
+				// This is a tombstone
+				val, err := db.Get(key, options.WithNamespace("graveyard"))
+				require.EqualError(t, err, "not found", "tombstone did not return a not found error")
+				require.Nil(t, val, "tombstone returned a non nil value")
+
+				obj, err := db.Object(key, options.WithNamespace("graveyard"))
+				require.NoError(t, err, "tombstone did not return an object")
+				require.True(t, obj.Tombstone())
+			}
+		} else {
+			// Not a tombstone
+			val, err := db.Get(key, options.WithNamespace("graveyard"))
+			require.NoError(t, err, "a live object returned error on get")
+			require.Len(t, val, 256)
+
+			obj, err := db.Object(key, options.WithNamespace("graveyard"))
+			require.NoError(t, err, "live object did not return an object")
+			require.False(t, obj.Tombstone())
+		}
+	}
+}
+
+func TestTombstonesMultipleNamespaces(t *testing.T) {
+	// Create a test database
+	db, _ := setupHonuDB(t)
+	namespaces := []string{"graveyard", "cemetery", "catacombs"}
+
+	// Assert that there is nothing in the namespaces as an initial check
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 0)
+	}
+	requireDatabaseLen(t, db, 0)
+
+	// Create a list of keys with integer values
+	keys := make([][]byte, 0, 100)
+	for i := 0; i < 100; i++ {
+		key := []byte(fmt.Sprintf("%00X", i+1))
+		keys = append(keys, key)
+	}
+
+	// Add data to the database
+	for _, key := range keys {
+		for _, ns := range namespaces {
+			db.Put(key, randomData(256), options.WithNamespace(ns))
+		}
+	}
+
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+
+	// Delete all even keys
+	for i, key := range keys {
+		if i%2 == 0 {
+			for _, ns := range namespaces {
+				db.Delete(key, options.WithNamespace(ns))
+			}
+		}
+	}
+
+	// Ensure that the iterator returns 50 items but that there are still 100 objects
+	// including tombstones still stored in the database. Also ensure that the entire
+	// database still contains 300 objects.
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 50)
+		requireGraveyardLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+
+	// "Resurrect" every 4th tombstone and give it a new value
+	for i, key := range keys {
+		if i%4 == 0 {
+			for _, ns := range namespaces {
+				db.Put(key, randomData(192), options.WithNamespace(ns))
+			}
+		}
+	}
+
+	// Ensure that the iterator returns 75 items but that there are still 100 objects
+	// including tombstones still stored in the database. Also ensure that the entire
+	// database still contains 300 objects.
+	for _, ns := range namespaces {
+		requireNamespaceLen(t, db, ns, 75)
+		requireGraveyardLen(t, db, ns, 100)
+	}
+	requireDatabaseLen(t, db, 300)
+}
+
 // Helper assertion function to check to make sure an object matches what is in the database
 func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key []byte, namespace string) {
 	actual, err := db.Object(key, options.WithNamespace(namespace))
@@ -333,6 +489,51 @@ func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key 
 		require.Nil(t, actual.Version.Parent, "expected parent is nil")
 	}
 	require.True(t, bytes.Equal(expected.Data, actual.Data), "value is not equal")
+}
+
+func requireNamespaceLen(t *testing.T, db *honu.DB, namespace string, expected int) {
+	iter, err := db.Iter(nil, options.WithNamespace(namespace))
+	require.NoError(t, err)
+
+	actual := 0
+	for iter.Next() {
+		actual++
+	}
+
+	require.NoError(t, iter.Error())
+	iter.Release()
+	require.Equal(t, expected, actual)
+}
+
+func requireGraveyardLen(t *testing.T, db *honu.DB, namespace string, expected int) {
+	iter, err := db.Iter(nil, options.WithNamespace(namespace), options.WithTombstones())
+	require.NoError(t, err)
+
+	actual := 0
+	for iter.Next() {
+		actual++
+	}
+
+	require.NoError(t, iter.Error())
+	iter.Release()
+	require.Equal(t, expected, actual)
+}
+
+func requireDatabaseLen(t *testing.T, db *honu.DB, expected int) {
+	engine, ok := db.Engine().(*leveldb.LevelDBEngine)
+	require.True(t, ok, "database len requires a leveldb engine")
+	ldb := engine.DB()
+
+	actual := 0
+	iter := ldb.NewIterator(nil, nil)
+	for iter.Next() {
+		actual++
+	}
+
+	require.NoError(t, iter.Error(), "could not iterate using leveldb directly")
+	iter.Release()
+
+	require.Equal(t, expected, actual, "database key count does not match")
 }
 
 // Helper function to generate random data
