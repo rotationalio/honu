@@ -59,12 +59,23 @@ func (i *ldbIterator) Prev() bool {
 }
 
 func (i *ldbIterator) Seek(key []byte) bool {
-	// NOTE: no need to do tombstone checking in Seek because Next will be called.
 	// We need to prefix the seek with the correct namespace
 	if i.options.Namespace != "" {
 		key = prepend(i.options.Namespace, key)
 	}
-	return i.ldb.Seek(key)
+
+	if ok := i.ldb.Seek(key); !ok {
+		return false
+	}
+
+	// If we aren't including Tombstones, we need to check if the check if the current
+	// version is a tombstone, and if not, continue to the next non-tombstone object
+	if !i.options.Tombstones {
+		if obj, err := i.Object(); err != nil || obj.Tombstone() {
+			return i.Next()
+		}
+	}
+	return true
 }
 
 func (i *ldbIterator) Key() []byte {

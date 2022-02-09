@@ -304,7 +304,7 @@ func TestTombstones(t *testing.T) {
 	// Create a list of keys with integer values
 	keys := make([][]byte, 0, 20)
 	for i := 0; i < 20; i++ {
-		key := []byte(fmt.Sprintf("%00X", i+1))
+		key := []byte(fmt.Sprintf("%04d", i))
 		keys = append(keys, key)
 	}
 
@@ -397,6 +397,37 @@ func TestTombstones(t *testing.T) {
 			require.False(t, obj.Tombstone())
 		}
 	}
+
+	// Test Seek, Next, and Prev with and without Tombstones
+	iter, err := db.Iter(nil, options.WithNamespace("graveyard"))
+	require.NoError(t, err, "could not create honu iterator")
+
+	itert, err := db.Iter(nil, options.WithNamespace("graveyard"), options.WithTombstones())
+	require.NoError(t, err, "could not create honu tombstone iterator")
+
+	// Seek to a non-tombstone key
+	require.True(t, iter.Seek(keys[9]), "could not seek to a non-tombstone key")
+	require.True(t, itert.Seek(keys[9]), "could not seek to a non-tombstone key with tombstone iterator")
+	require.True(t, bytes.Equal(iter.Key(), keys[9]), "unexpected key at iter cursor")
+	require.True(t, bytes.Equal(itert.Key(), keys[9]), "unexpected key at iter cursor with tombstone iterator")
+
+	// Seek to a tombstone key (move to 15 and 14 respectively)
+	require.True(t, iter.Seek(keys[14]), "could not seek to a tombstone key")
+	require.True(t, itert.Seek(keys[14]), "could not seek to a tombstone key with tombstone iterator")
+	require.True(t, bytes.Equal(iter.Key(), keys[15]), "unexpected key at iter cursor")
+	require.True(t, bytes.Equal(itert.Key(), keys[14]), "unexpected key at iter cursor with tombstone iterator")
+
+	// Prev should move us to keys[13] for both two iterators
+	require.True(t, iter.Prev(), "could not prev to a non-tombstone key")
+	require.True(t, itert.Prev(), "could not prev to a non-tombstone key with tombstone iterator")
+	require.True(t, bytes.Equal(iter.Key(), keys[13]), "unexpected key at iter cursor")
+	require.True(t, bytes.Equal(itert.Key(), keys[13]), "unexpected key at iter cursor with tombstone iterator")
+
+	// Next should move us back to 15 and 14 respectively
+	require.True(t, iter.Next(), "could not next to a non-tombstone key")
+	require.True(t, itert.Next(), "could not next to a tombstone key with tombstone iterator")
+	require.True(t, bytes.Equal(iter.Key(), keys[15]), "unexpected key at iter cursor")
+	require.True(t, bytes.Equal(itert.Key(), keys[14]), "unexpected key at iter cursor with tombstone iterator")
 }
 
 func TestTombstonesMultipleNamespaces(t *testing.T) {
@@ -413,7 +444,7 @@ func TestTombstonesMultipleNamespaces(t *testing.T) {
 	// Create a list of keys with integer values
 	keys := make([][]byte, 0, 100)
 	for i := 0; i < 100; i++ {
-		key := []byte(fmt.Sprintf("%00X", i+1))
+		key := []byte(fmt.Sprintf("%04d", i))
 		keys = append(keys, key)
 	}
 
