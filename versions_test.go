@@ -56,6 +56,7 @@ func TestVersionManager(t *testing.T) {
 	require.Equal(t, vers1.Region, obj.Version.Region)
 	require.Empty(t, obj.Version.Parent)
 	require.False(t, obj.Tombstone())
+	require.NotZero(t, obj.Version.Timestamp())
 
 	// Create a new remote versioner
 	conf.PID = 13
@@ -96,6 +97,7 @@ func TestVersionManager(t *testing.T) {
 	require.Equal(t, uint64(1), obj.Version.Parent.Version)
 	require.Equal(t, vers1.Region, obj.Version.Parent.Region)
 	require.False(t, obj.Tombstone())
+	require.NotZero(t, obj.Version.Timestamp())
 
 	// Test Delete - creating a tombstone
 	require.NoError(t, vers1.Delete(obj))
@@ -130,6 +132,7 @@ func TestVersionManager(t *testing.T) {
 	require.Equal(t, uint64(2), obj.Version.Parent.Version)
 	require.Equal(t, vers2.Region, obj.Version.Parent.Region)
 	require.True(t, obj.Tombstone())
+	require.NotZero(t, obj.Version.Timestamp())
 
 	// Cannot delete a deleted object
 	require.Error(t, vers1.Delete(obj))
@@ -174,4 +177,5 @@ func TestVersionManager(t *testing.T) {
 	require.Equal(t, uint64(3), obj.Version.Parent.Version)
 	require.Equal(t, vers1.Region, obj.Version.Parent.Region)
 	require.False(t, obj.Tombstone())
+	require.NotZero(t, obj.Version.Timestamp())
 }

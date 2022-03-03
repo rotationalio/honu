@@ -1,5 +1,7 @@
 package object
 
+import "time"
+
 var VersionZero = Version{}
 
 // Tombstone returns true if the version of the object is a Tombstone (for a deleted object)
@@ -109,6 +111,12 @@ func (v *Version) Clone() *Version {
 		Version:   v.Version,
 		Region:    v.Region,
 		Tombstone: v.Tombstone,
+		Created:   v.Created,
 	}
 	return parent
+}
+
+// Returns the Version timestamp
+func (v *Version) Timestamp() time.Time {
+	return time.Unix(v.Created, 0)
 }
