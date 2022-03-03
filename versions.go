@@ -3,6 +3,7 @@ package honu
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/rotationalio/honu/config"
 	pb "github.com/rotationalio/honu/object"
@@ -89,4 +90,5 @@ func (v VersionManager) updateVersion(meta *pb.Object, delete_version bool) {
 	meta.Version.Version++
 	meta.Version.Region = v.Region
 	meta.Version.Tombstone = delete_version
+	meta.Version.Created = time.Now().Unix()
 }

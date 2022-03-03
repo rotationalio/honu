@@ -2,6 +2,7 @@ package object_test
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/rotationalio/honu/object"
 	"github.com/stretchr/testify/require"
@@ -187,4 +188,11 @@ func TestVersionHistory(t *testing.T) {
 		current := history[i]
 		require.True(t, current.LinearFrom(parent), "%s should be linear from %s", current, parent)
 	}
+}
+
+func TestVersionTimestamp(t *testing.T) {
+	ts, err := time.Parse(time.RFC3339, "2022-03-05T14:52:31Z")
+	require.NoError(t, err)
+	v1 := &Version{Pid: 7, Version: 6, Parent: &Version{Pid: 9, Version: 5}, Created: ts.Unix()}
+	require.True(t, ts.Equal(v1.Timestamp()))
 }

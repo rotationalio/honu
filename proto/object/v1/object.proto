@@ -34,4 +34,5 @@ message Version {
     string region = 3;        // The region where the change occurred to track multi-region handling.
     Version parent = 4;       // In order to get a complete version history, identify the predessor; for compact data transfer parent should not be defined in parent version.
     bool tombstone = 5;       // Set to true in order to mark the object as deleted
+    int64 created = 6;        // The timestamp the version was created
 }
