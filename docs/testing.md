@@ -23,4 +23,4 @@ Since fuzzing involves generating inputs at time intervals, you explicitly run t
 Watch the output, and view any errors that may arise. When you are satisfied the tests confirm your code working as expected, you can exit the test. 
 
 eg. 
-` go test -fuzz=FuzzNewVersionManager -v`
+` go test -fuzz=FuzzVersionManager_Delete -v`
