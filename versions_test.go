@@ -3,6 +3,7 @@ package honu_test
 import (
 	"testing"
 
+	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	. "github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
 	pb "github.com/rotationalio/honu/object"
@@ -174,4 +175,83 @@ func TestVersionManager(t *testing.T) {
 	require.Equal(t, uint64(3), obj.Version.Parent.Version)
 	require.Equal(t, vers1.Region, obj.Version.Parent.Region)
 	require.False(t, obj.Tombstone())
+}
+
+// FuzzNewVersionManager implements the new version manager fuzzer
+func FuzzNewVersionManager(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		f := fuzz.NewConsumer(data)
+		c := config.ReplicaConfig{
+			PID:    8,
+			Region: "us-east-2c",
+		}
+		err := f.GenerateStruct(&c)
+		if err != nil {
+			return
+		}
+		_, err = NewVersionManager(c)
+		if err != nil {
+			return
+		}
+	})
+}
+
+// FuzzVersionManager_Update implements fuzzer for the version manager update method
+func FuzzVersionManager_Update(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		f := fuzz.NewConsumer(data)
+		c := config.ReplicaConfig{
+			PID:    8,
+			Region: "us-east-2c",
+		}
+		err := f.GenerateStruct(&c)
+		if err != nil {
+			return
+		}
+
+		meta := pb.Object{}
+		err = f.GenerateStruct(&meta)
+		if err != nil {
+			return
+		}
+		vm, err := NewVersionManager(c)
+		if err != nil {
+			return
+		}
+
+		err = vm.Update(&meta)
+		if err != nil {
+			return
+		}
+	})
+}
+
+// FuzzVersionManager_Delete implements fuzzer for the version manager update method
+func FuzzVersionManager_Delete(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		f := fuzz.NewConsumer(data)
+		c := config.ReplicaConfig{
+			PID:    8,
+			Region: "us-east-2c",
+		}
+		err := f.GenerateStruct(&c)
+		if err != nil {
+			return
+		}
+
+		meta := pb.Object{}
+		err = f.GenerateStruct(&meta)
+		if err != nil {
+			return
+		}
+		vm, err := NewVersionManager(c)
+		if err != nil {
+			return
+		}
+
+		err = vm.Delete(&meta)
+		if err != nil {
+			return
+		}
+	})
 }
