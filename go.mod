@@ -1,6 +1,6 @@
 module github.com/rotationalio/honu
 
-go 1.20
+go 1.19
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20230906203007-2129a6e99d0f
