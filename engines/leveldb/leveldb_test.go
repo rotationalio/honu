@@ -1,7 +1,6 @@
 package leveldb_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -38,7 +37,7 @@ var testNamespaces = []string{
 
 // Returns a LevelDBEngine and the path where it was created.
 func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
-	tempDir, err := ioutil.TempDir("", "leveldb-*")
+	tempDir, err := os.MkdirTemp("", "leveldb-*")
 	require.NoError(t, err)
 
 	conf, _ := config.New()
@@ -69,6 +68,13 @@ func namespaceOpts(namespace string, t *testing.T) *options.Options {
 func checkPut(ldbStore engine.Store, opts *options.Options, key []byte, value []byte, t *testing.T) {
 	err := ldbStore.Put(key, value, opts)
 	require.NoError(t, err)
+}
+
+// Wraps engine.Store.Has with testing checks
+func checkHas(ldbStore engine.Store, opts *options.Options, key []byte, assert require.BoolAssertionFunc, t *testing.T) {
+	exists, err := ldbStore.Has(key, opts)
+	require.NoError(t, err)
+	assert(t, exists)
 }
 
 // Wraps engine.Store.Get with testing checks.
@@ -134,7 +140,9 @@ func TestLevelDBTransactions(t *testing.T) {
 		opts, err := options.New(options.WithNamespace(namespace))
 		require.NoError(t, err)
 		value := []byte(namespace)
+		checkHas(tx, opts, key, require.False, t)
 		checkPut(tx, opts, key, value, t)
+		checkHas(tx, opts, key, require.True, t)
 		checkGet(tx, opts, key, value, t)
 		checkDelete(tx, opts, key, t)
 

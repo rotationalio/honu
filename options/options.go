@@ -24,12 +24,14 @@ func New(options ...Option) (cfg *Options, err error) {
 // Contains all available read/write options for the supported engines. Fields are set
 // by closures implementing the SetOptions signature.
 type Options struct {
-	LevelDBRead  *ldb.ReadOptions
-	LevelDBWrite *ldb.WriteOptions
-	PebbleWrite  *pebble.WriteOptions
-	Namespace    string
-	Force        bool
-	Tombstones   bool
+	LevelDBRead      *ldb.ReadOptions
+	LevelDBWrite     *ldb.WriteOptions
+	PebbleWrite      *pebble.WriteOptions
+	Namespace        string
+	Force            bool
+	Tombstones       bool
+	RequireExists    bool
+	RequireNotExists bool
 }
 
 // Defines the signature of functions accepted as parameters by Honu methods.
@@ -42,6 +44,28 @@ func WithNamespace(namespace string) Option {
 		if namespace != "" {
 			cfg.Namespace = namespace
 		}
+		return nil
+	}
+}
+
+// WithRequireExists adds an invariants to writes that the key has to exist prior to
+// the write operation otherwise the operation will fail with a NotFound error. This is
+// a similar semantic to "Update" for Put and is a check to ensure that something was
+// removed for Delete.
+func WithRequireExists() Option {
+	return func(cfg *Options) error {
+		cfg.RequireExists = true
+		return nil
+	}
+}
+
+// WithRequireNotExists adds an invariant to writes that the key must not exist prior to
+// the write operation otherwise the operation will fail with an AlreadyExists error.
+// This is a similar semantic to "Create" for Put and while it has no real meaning for
+// Delete, the invariant is still enforced.
+func WithRequireNotExists() Option {
+	return func(cfg *Options) error {
+		cfg.RequireNotExists = true
 		return nil
 	}
 }
@@ -62,8 +86,8 @@ func WithTombstones() Option {
 	}
 }
 
-//Closure returning a function that adds the leveldbRead
-//parameter to an Options struct's LeveldbRead field.
+// Closure returning a function that adds the leveldbRead
+// parameter to an Options struct's LeveldbRead field.
 func WithLevelDBRead(opts *ldb.ReadOptions) Option {
 	return func(cfg *Options) error {
 		cfg.LevelDBRead = opts
@@ -71,8 +95,8 @@ func WithLevelDBRead(opts *ldb.ReadOptions) Option {
 	}
 }
 
-//Closure returning a function that adds the leveldbWrite
-//parameter to an Options struct's LeveldbWrite field.
+// Closure returning a function that adds the leveldbWrite
+// parameter to an Options struct's LeveldbWrite field.
 func WithLevelDBWrite(opts *ldb.WriteOptions) Option {
 	return func(cfg *Options) error {
 		cfg.LevelDBWrite = opts
@@ -80,8 +104,8 @@ func WithLevelDBWrite(opts *ldb.WriteOptions) Option {
 	}
 }
 
-//Closure returning a function that adds the pebbleWrite
-//parameter to an Options struct's PebbleWrite field.
+// Closure returning a function that adds the pebbleWrite
+// parameter to an Options struct's PebbleWrite field.
 func WithPebbleWrite(opts *pebble.WriteOptions) Option {
 	return func(cfg *Options) error {
 		cfg.PebbleWrite = opts

@@ -49,6 +49,7 @@ func Open(uri string, options ...config.Option) (db *DB, err error) {
 	switch dsn.Scheme {
 	case "leveldb":
 		// TODO: multiple leveldb databases for different namespaces
+		// TODO: transactions that do not lock all namespaces
 		if db.engine, err = leveldb.Open(dsn.Path, conf); err != nil {
 			return nil, err
 		}
@@ -249,6 +250,22 @@ func (db *DB) Put(key, value []byte, options ...opts.Option) (_ *pb.Object, err 
 		return nil, err
 	}
 
+	// Handle existence invariants
+	if cfg.RequireNotExists || cfg.RequireExists {
+		var exists bool
+		if exists, err = tx.Has(key, cfg); err != nil {
+			return nil, err
+		}
+
+		if cfg.RequireExists && !exists {
+			return nil, engine.ErrNotFound
+		}
+
+		if cfg.RequireNotExists && exists {
+			return nil, engine.ErrAlreadyExists
+		}
+	}
+
 	// Get or Create the previous version
 	var data []byte
 	var obj *pb.Object
@@ -298,6 +315,24 @@ func (db *DB) Delete(key []byte, options ...opts.Option) (_ *pb.Object, err erro
 	var cfg *opts.Options
 	if cfg, err = opts.New(options...); err != nil {
 		return nil, err
+	}
+
+	// Handle existence invariants
+	if cfg.RequireNotExists || cfg.RequireExists {
+		var exists bool
+		if exists, err = tx.Has(key, cfg); err != nil {
+			return nil, err
+		}
+
+		// Technically duplicates the Get not found but perhaps will speed up the delete
+		if cfg.RequireExists && !exists {
+			return nil, engine.ErrNotFound
+		}
+
+		// Note really sure what this means for Delete but keeping for consistency
+		if cfg.RequireNotExists && exists {
+			return nil, engine.ErrAlreadyExists
+		}
 	}
 
 	var data []byte

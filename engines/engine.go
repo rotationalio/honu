@@ -23,6 +23,7 @@ type Engine interface {
 // Store is a simple key/value interface that allows for Get, Put, and Delete. Nearly
 // all engines should support the Store interface.
 type Store interface {
+	Has(key []byte, options *opts.Options) (exists bool, err error)
 	Get(key []byte, options *opts.Options) (value []byte, err error)
 	Put(key, value []byte, options *opts.Options) error
 	Delete(key []byte, options *opts.Options) error
