@@ -1,7 +1,6 @@
 package honu_test
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -21,7 +20,7 @@ var (
 
 func setupLevelDB(t testing.TB) (*leveldb.DB, string) {
 	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "leveldb-*")
+	tmpDir, err := os.MkdirTemp("", "leveldb-*")
 	require.NoError(t, err)
 
 	// Open a leveldb database directly without honu wrapper

@@ -3,13 +3,13 @@ package honu_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
+	engine "github.com/rotationalio/honu/engines"
 	"github.com/rotationalio/honu/engines/leveldb"
 	"github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
@@ -40,7 +40,7 @@ var testNamespaces = []string{
 
 func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
-	tmpDir, err := ioutil.TempDir("", "honudb-*")
+	tmpDir, err := os.MkdirTemp("", "honudb-*")
 	require.NoError(t, err)
 
 	// Open a Honu leveldb database with default configuration
@@ -69,7 +69,7 @@ func TestLevelDBInteractions(t *testing.T) {
 		key := []byte("foo")
 		//append a constant to namespace as the value
 		//because when the empty namespace is returned
-		//as a key it is unmarsheled as []byte(nil)
+		//as a key it is serialized as []byte(nil)
 		//instead of []byte{}
 		expectedValue := []byte(namespace + "this is the value of foo")
 
@@ -165,6 +165,105 @@ func TestLevelDBInteractions(t *testing.T) {
 	_, ok := db.Engine().(*leveldb.LevelDBEngine)
 	require.True(t, ok, "the engine type returned should be a leveldb.DB")
 	requireDatabaseLen(t, db, totalKeys)
+}
+
+func TestExistenceInvariants(t *testing.T) {
+	keysExist := [][]byte{{0x00, 0x00, 0x00, 0xAB}, {0x00, 0x00, 0xEF, 0x99}, {0x63, 0xA1, 0x00, 0x01}, {0xAB, 0xCD, 0xEF, 0x99}}
+	keysMissing := [][]byte{{0x00, 0x00, 0x00, 0x00}, {0x10, 0x20, 0x30, 0x40}, {0x64, 0xA2, 0x01, 0x02}, {0x99, 0xFE, 0xDC, 0xBA}}
+
+	createFixtures := func(t *testing.T, db *honu.DB) {
+		for _, namespace := range testNamespaces {
+			for _, key := range keysExist {
+				_, err := db.Put(key, randomData(128), options.WithNamespace(namespace))
+				require.NoError(t, err, "could not create key fixtures in database")
+			}
+		}
+	}
+
+	t.Run("PutRequireExists", func(t *testing.T) {
+		// Setup the database
+		db, _ := setupHonuDB(t)
+		requireDatabaseLen(t, db, 0)
+		createFixtures(t, db)
+
+		for _, namespace := range testNamespaces {
+			for _, key := range keysExist {
+				obj, err := db.Put(key, randomData(256), options.WithNamespace(namespace), options.WithRequireExists())
+				require.NoError(t, err, "expected no error since key exists")
+				require.Equal(t, uint64(2), obj.Version.Version)
+			}
+
+			for _, key := range keysMissing {
+				obj, err := db.Put(key, randomData(256), options.WithNamespace(namespace), options.WithRequireExists())
+				require.ErrorIs(t, err, engine.ErrNotFound, "expected not found error when key was missing")
+				require.Nil(t, obj, "expected no object returned from error call")
+			}
+		}
+	})
+
+	t.Run("PutRequireNotExists", func(t *testing.T) {
+		// Setup the database
+		db, _ := setupHonuDB(t)
+		requireDatabaseLen(t, db, 0)
+		createFixtures(t, db)
+
+		for _, namespace := range testNamespaces {
+			for _, key := range keysMissing {
+				obj, err := db.Put(key, randomData(256), options.WithNamespace(namespace), options.WithRequireNotExists())
+				require.NoError(t, err, "expected no error since key is missing")
+				require.Equal(t, uint64(1), obj.Version.Version)
+			}
+
+			for _, key := range keysExist {
+				obj, err := db.Put(key, randomData(256), options.WithNamespace(namespace), options.WithRequireNotExists())
+				require.ErrorIs(t, err, engine.ErrAlreadyExists, "expected already exists error when key exists")
+				require.Nil(t, obj, "expected no object returned from error call")
+			}
+		}
+	})
+
+	t.Run("DeleteRequireExists", func(t *testing.T) {
+		// Setup the database
+		db, _ := setupHonuDB(t)
+		requireDatabaseLen(t, db, 0)
+		createFixtures(t, db)
+
+		for _, namespace := range testNamespaces {
+			for _, key := range keysExist {
+				obj, err := db.Delete(key, options.WithNamespace(namespace), options.WithRequireExists())
+				require.NoError(t, err, "expected no error since key exists")
+				require.True(t, obj.Tombstone())
+			}
+
+			for _, key := range keysMissing {
+				obj, err := db.Delete(key, options.WithNamespace(namespace), options.WithRequireExists())
+				require.ErrorIs(t, err, engine.ErrNotFound, "expected not found error when key was missing")
+				require.Nil(t, obj, "expected no object returned from error call")
+			}
+		}
+	})
+
+	t.Run("DeleteRequireNotExists", func(t *testing.T) {
+		// Setup the database
+		db, _ := setupHonuDB(t)
+		requireDatabaseLen(t, db, 0)
+		createFixtures(t, db)
+
+		for _, namespace := range testNamespaces {
+			for _, key := range keysMissing {
+				obj, err := db.Delete(key, options.WithNamespace(namespace), options.WithRequireNotExists())
+				require.ErrorIs(t, err, engine.ErrNotFound, "expected not found error since key is missing")
+				require.Nil(t, obj, "expeced no object since key is missing")
+			}
+
+			for _, key := range keysExist {
+				obj, err := db.Delete(key, options.WithNamespace(namespace), options.WithRequireNotExists())
+				require.ErrorIs(t, err, engine.ErrAlreadyExists, "expected already exists error when key exists")
+				require.Nil(t, obj, "expected no object returned from error call")
+			}
+		}
+	})
+
 }
 
 func TestUpdate(t *testing.T) {

@@ -48,6 +48,28 @@ func WithNamespace(namespace string) Option {
 	}
 }
 
+// WithRequireExists adds an invariants to writes that the key has to exist prior to
+// the write operation otherwise the operation will fail with a NotFound error. This is
+// a similar semantic to "Update" for Put and is a check to ensure that something was
+// removed for Delete.
+func WithRequireExists() Option {
+	return func(cfg *Options) error {
+		cfg.RequireExists = true
+		return nil
+	}
+}
+
+// WithRequireNotExists adds an invariant to writes that the key must not exist prior to
+// the write operation otherwise the operation will fail with an AlreadyExists error.
+// This is a similar semantic to "Create" for Put and while it has no real meaning for
+// Delete, the invariant is still enforced.
+func WithRequireNotExists() Option {
+	return func(cfg *Options) error {
+		cfg.RequireNotExists = true
+		return nil
+	}
+}
+
 // WithForce prevents validation checks from returning an error during accesses.
 func WithForce() Option {
 	return func(cfg *Options) error {

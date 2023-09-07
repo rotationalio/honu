@@ -1,7 +1,6 @@
 package leveldb_test
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -38,7 +37,7 @@ var testNamespaces = []string{
 
 // Returns a LevelDBEngine and the path where it was created.
 func setupLevelDBEngine(t testing.TB) (_ *leveldb.LevelDBEngine, path string) {
-	tempDir, err := ioutil.TempDir("", "leveldb-*")
+	tempDir, err := os.MkdirTemp("", "leveldb-*")
 	require.NoError(t, err)
 
 	conf, _ := config.New()
