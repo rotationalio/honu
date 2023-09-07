@@ -71,6 +71,35 @@ func (tx *Transaction) Finish() error {
 	return nil
 }
 
+// Has returns true if the DB does contains the given key.
+func (tx *Transaction) Has(key []byte, options *opts.Options) (bool, error) {
+	return tx.db.has(key, options)
+}
+
+// Has returns true if the DB does contains the given key.
+func (db *LevelDBEngine) Has(key []byte, options *opts.Options) (bool, error) {
+	db.RLock()
+	defer db.RUnlock()
+	return db.has(key, options)
+}
+
+// Has returns true if the DB does contains the given key.
+func (db *LevelDBEngine) has(key []byte, options *opts.Options) (_ bool, err error) {
+	// Create a default to prevent panics when accessing options.
+	if options == nil {
+		if options, err = opts.New(); err != nil {
+			return false, err
+		}
+	}
+
+	// Namespaces in leveldb are provided not by buckets but by namespace:: prefixed keys
+	if options.Namespace != "" {
+		key = prepend(options.Namespace, key)
+	}
+
+	return db.ldb.Has(key, options.LevelDBRead)
+}
+
 // Get the latest version of the object stored by the key. This is the Transaction Get
 // method which can be used in either readonly or write modes. This is the preferred
 // mechanism to access the underlying engine.
