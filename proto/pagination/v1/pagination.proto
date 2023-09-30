@@ -1,6 +1,9 @@
 syntax = "proto3";
 
 package honu.pagination.v1;
+
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/rotationalio/honu/pagination";
 
 // Implements a protocol buffer struct for state managed pagination. This struct will be
@@ -10,7 +13,15 @@ option go_package = "github.com/rotationalio/honu/pagination";
 // size in the cursor matches the page size in the request.
 // See https://cloud.google.com/apis/design/design_patterns#list_pagination for more.
 message PageCursor {
-    int32 page_size = 1;  // the number of results returned on each iteration.
-    bytes next_key = 2;   // the key to start the iteration from
-    string namespace = 3; // the namespace the cursor is iterating on
+  // The number of results returned on each iteration.
+  int32 page_size = 1;
+
+  // The key to start the iteration from for forward iteration (e.g. the seek key).
+  bytes next_key = 2;
+
+  // The namespace the cursor is iterating on
+  string namespace = 3;
+
+  // The timestamp when the cursor is no longer valid.
+  google.protobuf.Timestamp expires = 4;
 }

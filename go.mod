@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/cockroachdb/pebble v0.0.0-20230906203007-2129a6e99d0f
-	github.com/golang/protobuf v1.5.3
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.0
 	google.golang.org/grpc v1.58.0
@@ -22,6 +21,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/sentry-go v0.24.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
