@@ -89,6 +89,8 @@ func TestLevelDBInteractions(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(1), obj.Version.Version)
 		require.False(t, obj.Tombstone())
+		require.NotEmpty(t, obj.Created)
+		require.False(t, obj.Created.AsTime().IsZero())
 
 		// Delete the version from the database and ensure you
 		// are not able to get the deleted version

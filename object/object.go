@@ -1,5 +1,11 @@
 package object
 
+import (
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
 var VersionZero = Version{}
 
 // Tombstone returns true if the version of the object is a Tombstone (for a deleted object)
@@ -8,6 +14,17 @@ func (o *Object) Tombstone() bool {
 		panic("object improperly initialized without version")
 	}
 	return o.Version.Tombstone
+}
+
+func (o *Object) CreatedAt() time.Time {
+	return o.Created.AsTime()
+}
+
+func (o *Object) ModifiedAt() time.Time {
+	if o.Version == nil {
+		panic("object improperly initialized without version")
+	}
+	return o.Version.Modified.AsTime()
 }
 
 // IsZero determines if the version is zero valued (e.g. the PID and Version are zero).
@@ -102,13 +119,14 @@ func (v *Version) Skips(other *Version) bool {
 	return v.IsLater(other) && !v.Concurrent(other) && !v.LinearFrom(other)
 }
 
-//Copies the child's attributes before updating to the parent.
+// Copies the child's attributes before updating to the parent.
 func (v *Version) Clone() *Version {
 	parent := &Version{
 		Pid:       v.Pid,
 		Version:   v.Version,
 		Region:    v.Region,
 		Tombstone: v.Tombstone,
+		Modified:  timestamppb.New(v.Modified.AsTime()),
 	}
 	return parent
 }

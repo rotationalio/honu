@@ -6,6 +6,7 @@ import (
 
 	"github.com/rotationalio/honu/config"
 	pb "github.com/rotationalio/honu/object"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // NewVersionManager creates a new manager for handling lamport scalar versions.
@@ -83,10 +84,11 @@ func (v VersionManager) Delete(meta *pb.Object) error {
 	return nil
 }
 
-//Assigns the attributes of the passed versionManager to the object.
+// Assigns the attributes of the passed versionManager to the object.
 func (v VersionManager) updateVersion(meta *pb.Object, delete_version bool) {
 	meta.Version.Pid = v.PID
 	meta.Version.Version++
 	meta.Version.Region = v.Region
 	meta.Version.Tombstone = delete_version
+	meta.Version.Modified = timestamppb.Now()
 }
