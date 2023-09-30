@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package honu.pagination.v1;
+option go_package = "github.com/rotationalio/honu/pagination";
+
+// Implements a protocol buffer struct for state managed pagination. This struct will be
+// marshaled into a url-safe base64 encoded string and sent to the user as the
+// next_page_token. The server should decode this struct to determine where to continue
+// iteration for the next page. Note that the server should check to make sure the page
+// size in the cursor matches the page size in the request.
+// See https://cloud.google.com/apis/design/design_patterns#list_pagination for more.
+message PageCursor {
+    int32 page_size = 1;  // the number of results returned on each iteration.
+    bytes next_key = 2;   // the key to start the iteration from
+    string namespace = 3; // the namespace the cursor is iterating on
+}
