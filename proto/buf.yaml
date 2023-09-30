@@ -1,7 +1,5 @@
 version: v1
 name: buf.build/rotational/honudb
-deps:
-  - buf.build/googleapis/googleapis
 breaking:
   use:
     - FILE

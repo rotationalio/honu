@@ -17,6 +17,7 @@ import (
 	pb "github.com/rotationalio/honu/object"
 	opts "github.com/rotationalio/honu/options"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // DB is a Honu embedded database.
@@ -274,6 +275,7 @@ func (db *DB) Put(key, value []byte, options ...opts.Option) (_ *pb.Object, err 
 			obj = &pb.Object{
 				Key:       key,
 				Namespace: cfg.Namespace,
+				Created:   timestamppb.Now(),
 			}
 		} else {
 			return nil, err
