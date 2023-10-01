@@ -1,8 +1,42 @@
-project_name: honu
+project_name: honudb
 dist: dist
 builds:
-  # This is a library so no binary compilation is required
-  - skip: true
+  # Define multiple builds as a yaml list, specify by a unique id
+  - id: "cmd-honudb-build"
+    dir: .
+    main: ./cmd/honudb
+    binary: honudb
+    flags:
+      - -v
+    ldflags: -s -w -X github.com/rotationalio/honu.GitVersion={{.Commit}} -X github.com/rotationalio/honu.BuildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "6"
+    ignore:
+      - goos: linux
+        goarch: arm64
+      - goos: darwin
+        goarch: amd64
+
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: "honudb-archive-tgz"
+    format: tar.gz
+    builds:
+      - "cmd-honudb-build"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
 
 # Publish the release on GitHub
 release:
@@ -27,9 +61,13 @@ release:
   # Footer for the release body.
   footer: |
     ### About
-    Honu is (currently) an experimental project that adds global versioning and
-    replication semantics to an embedded database such as leveldb. If you're interested
-    in this project, please see https://geodistributed.systems for more.
+
+    Honu is distributed key-value store that is intended for large systems of replicas
+    that are distributed across the globe. Honu provides an eventually consistent
+    replication semantic that uses reinforcement learning to optimize replication to
+    lower both costs and the instances of stale reads and write forks. If you're
+    interested in this project, please see https://geodistributed.systems for more.
+
   # If set to true, will not auto-publish the release.
   disable: false
 

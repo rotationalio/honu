@@ -14,6 +14,9 @@ const (
 // Set the GitVersion via -ldflags="-X 'github.com/rotationalio/honu.GitVersion=$(git rev-parse --short HEAD)'"
 var GitVersion string
 
+// Set the BuildDate via -ldflags="-X github.com/rotationalio/honu.BuildDate=YYYY-MM-DD"
+var BuildDate string
+
 // Version returns the semantic version for the current build.
 func Version() string {
 	versionCore := fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionPatch)
@@ -27,7 +30,11 @@ func Version() string {
 	}
 
 	if GitVersion != "" {
-		versionCore = fmt.Sprintf("%s (%s)", versionCore, GitVersion)
+		if BuildDate != "" {
+			versionCore = fmt.Sprintf("%s (revision %s built on %s)", versionCore, GitVersion, BuildDate)
+		} else {
+			versionCore = fmt.Sprintf("%s (%s)", versionCore, GitVersion)
+		}
 	}
 
 	return versionCore
