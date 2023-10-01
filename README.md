@@ -3,9 +3,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/rotationalio/honu.svg)](https://pkg.go.dev/github.com/rotationalio/honu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rotationalio/honu)](https://goreportcard.com/report/github.com/rotationalio/honu)
 ![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/build.yaml/badge.svg?branch=main)
-[![codecov](https://codecov.io/gh/rotationalio/honu/branch/main/graph/badge.svg?token=7RY96Cu5dx)](https://codecov.io/gh/rotationalio/honu)
 
-**A library for embedded database replication**
+**HonuDB is a replicated key-value store intended for large systems that are distributed globally. Although HonuDB uses an eventually consistent gossip protocol for replication, it uses reinforcement learning with multi-armed bandits to optimize replication. Adaptive consistency reduces costs (ingress and egress data transfer) as well as improves consistency by lowering the likelihood of stale reads or forked writes.**
 
 ## Benchmarks
 

@@ -1,7 +1,7 @@
-package honu_test
+package db_test
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"os"
 	"testing"
 

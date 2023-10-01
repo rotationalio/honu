@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
+	engine "github.com/rotationalio/honu/db/engines"
 )
 
 func Open(conf config.Config) (*BadgerEngine, error) {

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
+	engine "github.com/rotationalio/honu/db/engines"
 	"github.com/rotationalio/honu/iterator"
 	opts "github.com/rotationalio/honu/options"
 	"github.com/syndtr/goleveldb/leveldb"

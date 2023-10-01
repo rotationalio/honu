@@ -1,4 +1,4 @@
-package honu
+package versions
 
 import (
 	"errors"
@@ -9,14 +9,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// NewVersionManager creates a new manager for handling lamport scalar versions.
-func NewVersionManager(conf config.ReplicaConfig) (v *VersionManager, err error) {
+// New creates a new manager for handling lamport scalar versions.
+func New(conf config.ReplicaConfig) (v *Manager, err error) {
 	// Make sure we don't create a VersionManager that is unable to do its job.
 	if conf.PID == 0 || conf.Region == "" {
 		return nil, errors.New("improperly configured: version manager requires PID and Region")
 	}
 
-	v = &VersionManager{PID: conf.PID, Region: conf.Region}
+	v = &Manager{PID: conf.PID, Region: conf.Region}
 
 	// Compute the owner name
 	if conf.Name != "" {
@@ -30,10 +30,10 @@ func NewVersionManager(conf config.ReplicaConfig) (v *VersionManager, err error)
 	return v, nil
 }
 
-// VersionManager is configured with information associated with the local Replica in
+// Manager is configured with information associated with the local Replica in
 // order to correctly implement Lamport clocks for sequential, conflict-free replicated
 // versions.
-type VersionManager struct {
+type Manager struct {
 	PID    uint64
 	Owner  string
 	Region string
@@ -41,7 +41,7 @@ type VersionManager struct {
 
 // Update the version of an object in place.
 // If the object was previously a tombstone (e.g. deleted) then it is "undeleted".
-func (v VersionManager) Update(meta *pb.Object) error {
+func (v Manager) Update(meta *pb.Object) error {
 	if meta == nil {
 		return errors.New("cannot update version on empty object")
 	}
@@ -63,7 +63,7 @@ func (v VersionManager) Update(meta *pb.Object) error {
 }
 
 // Delete creates a tombstone version of the object in place.
-func (v VersionManager) Delete(meta *pb.Object) error {
+func (v Manager) Delete(meta *pb.Object) error {
 	if meta == nil {
 		return errors.New("cannot create tombstone version on empty object")
 	}
@@ -85,7 +85,7 @@ func (v VersionManager) Delete(meta *pb.Object) error {
 }
 
 // Assigns the attributes of the passed versionManager to the object.
-func (v VersionManager) updateVersion(meta *pb.Object, delete_version bool) {
+func (v Manager) updateVersion(meta *pb.Object, delete_version bool) {
 	meta.Version.Pid = v.PID
 	meta.Version.Version++
 	meta.Version.Region = v.Region

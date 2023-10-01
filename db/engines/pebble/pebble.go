@@ -5,7 +5,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
+	engine "github.com/rotationalio/honu/db/engines"
 	"github.com/rotationalio/honu/iterator"
 	opts "github.com/rotationalio/honu/options"
 )
@@ -23,12 +23,12 @@ func Open(path string, conf config.Config) (_ *PebbleEngine, err error) {
 	return engine, nil
 }
 
-//Returns a string giving the engine type.
+// Returns a string giving the engine type.
 func (db *PebbleEngine) Engine() string {
 	return "pebble"
 }
 
-//Close the database.
+// Close the database.
 func (db *PebbleEngine) Close() error {
 	return db.pebble.Close()
 }
@@ -73,7 +73,7 @@ func (db *PebbleEngine) Delete(key []byte, options ...opts.Option) error {
 	return db.pebble.Delete(key, cfg.PebbleWrite)
 }
 
-//TODO: Implement pebble iteration (engines/pebble/iter.go)
+// TODO: Implement pebble iteration (engines/pebble/iter.go)
 func (db *PebbleEngine) Iter(prefix []byte) (i iterator.Iterator, err error) {
 	return nil, errors.New("not implemented yet")
 }
