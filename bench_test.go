@@ -1,7 +1,7 @@
 package honu_test
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"os"
 	"testing"
 

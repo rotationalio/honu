@@ -2,8 +2,8 @@ package honu_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 
