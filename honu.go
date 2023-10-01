@@ -16,6 +16,7 @@ import (
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
 	opts "github.com/rotationalio/honu/options"
+	"github.com/rotationalio/honu/versions"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -24,7 +25,7 @@ import (
 // Currently DB simply wraps a leveldb database
 type DB struct {
 	engine engine.Engine
-	vm     *VersionManager
+	vm     *versions.Manager
 }
 
 // Open a replicated embedded database with the specified URI. Database URIs should
@@ -43,7 +44,7 @@ func Open(uri string, options ...config.Option) (db *DB, err error) {
 	}
 
 	db = &DB{}
-	if db.vm, err = NewVersionManager(conf.Versions); err != nil {
+	if db.vm, err = versions.New(conf.Versions); err != nil {
 		return nil, err
 	}
 

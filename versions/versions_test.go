@@ -1,11 +1,11 @@
-package honu_test
+package versions_test
 
 import (
 	"testing"
 
-	. "github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
 	pb "github.com/rotationalio/honu/object"
+	. "github.com/rotationalio/honu/versions"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,20 +13,20 @@ func TestVersionManager(t *testing.T) {
 	conf := config.ReplicaConfig{}
 
 	// Check required settings
-	_, err := NewVersionManager(conf)
+	_, err := New(conf)
 	require.Error(t, err)
 
 	conf.PID = 8
-	_, err = NewVersionManager(conf)
+	_, err = New(conf)
 	require.Error(t, err)
 
 	conf.Region = "us-east-2c"
-	vers1, err := NewVersionManager(conf)
+	vers1, err := New(conf)
 	require.NoError(t, err)
 	require.Equal(t, "8:us-east-2c", vers1.Owner)
 
 	conf.Name = "mitchell"
-	vers1, err = NewVersionManager(conf)
+	vers1, err = New(conf)
 	require.NoError(t, err)
 	require.Equal(t, "8:mitchell", vers1.Owner)
 
@@ -63,7 +63,7 @@ func TestVersionManager(t *testing.T) {
 	conf.PID = 13
 	conf.Region = "europe-west-3"
 	conf.Name = "jacques"
-	vers2, err := NewVersionManager(conf)
+	vers2, err := New(conf)
 	require.NoError(t, err)
 
 	// Update the previous version
