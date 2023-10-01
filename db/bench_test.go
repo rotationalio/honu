@@ -1,4 +1,4 @@
-package honu_test
+package db_test
 
 import (
 	"crypto/rand"

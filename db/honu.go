@@ -2,17 +2,17 @@
 Package honu provides a thin wrapper over an embedded database (leveldb, sqlite) that
 provides version history to object changes and anti-entropy replication.
 */
-package honu
+package db
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
-	"github.com/rotationalio/honu/engines/badger"
-	"github.com/rotationalio/honu/engines/leveldb"
-	"github.com/rotationalio/honu/engines/pebble"
+	engine "github.com/rotationalio/honu/db/engines"
+	"github.com/rotationalio/honu/db/engines/badger"
+	"github.com/rotationalio/honu/db/engines/leveldb"
+	"github.com/rotationalio/honu/db/engines/pebble"
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
 	opts "github.com/rotationalio/honu/options"

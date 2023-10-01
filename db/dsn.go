@@ -1,4 +1,4 @@
-package honu
+package db
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package honu_test
+package db_test
 
 import (
 	"bytes"
@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rotationalio/honu"
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
-	"github.com/rotationalio/honu/engines/leveldb"
+	. "github.com/rotationalio/honu/db"
+	engine "github.com/rotationalio/honu/db/engines"
+	"github.com/rotationalio/honu/db/engines/leveldb"
 	"github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
@@ -38,14 +38,14 @@ var testNamespaces = []string{
 	"namespace::with::colons",
 }
 
-func setupHonuDB(t testing.TB) (db *honu.DB, tmpDir string) {
+func setupHonuDB(t testing.TB) (db *DB, tmpDir string) {
 	// Create a new leveldb database in a temporary directory
 	tmpDir, err := os.MkdirTemp("", "honudb-*")
 	require.NoError(t, err)
 
 	// Open a Honu leveldb database with default configuration
 	uri := fmt.Sprintf("leveldb:///%s", tmpDir)
-	db, err = honu.Open(uri, config.WithReplica(config.ReplicaConfig{PID: 8, Region: "us-southwest-16", Name: "testing"}))
+	db, err = Open(uri, config.WithReplica(config.ReplicaConfig{PID: 8, Region: "us-southwest-16", Name: "testing"}))
 	if err != nil && tmpDir != "" {
 		os.RemoveAll(tmpDir)
 	}
@@ -173,7 +173,7 @@ func TestExistenceInvariants(t *testing.T) {
 	keysExist := [][]byte{{0x00, 0x00, 0x00, 0xAB}, {0x00, 0x00, 0xEF, 0x99}, {0x63, 0xA1, 0x00, 0x01}, {0xAB, 0xCD, 0xEF, 0x99}}
 	keysMissing := [][]byte{{0x00, 0x00, 0x00, 0x00}, {0x10, 0x20, 0x30, 0x40}, {0x64, 0xA2, 0x01, 0x02}, {0x99, 0xFE, 0xDC, 0xBA}}
 
-	createFixtures := func(t *testing.T, db *honu.DB) {
+	createFixtures := func(t *testing.T, db *DB) {
 		for _, namespace := range testNamespaces {
 			for _, key := range keysExist {
 				_, err := db.Put(key, randomData(128), options.WithNamespace(namespace))
@@ -295,19 +295,19 @@ func TestUpdate(t *testing.T) {
 	// Should be able to update with no namespace option
 	update, err := db.Update(new1)
 	require.NoError(t, err, "could not update db with new1")
-	require.Equal(t, honu.UpdateLinear, update, "expected new1 update to be linear")
+	require.Equal(t, UpdateLinear, update, "expected new1 update to be linear")
 	requireObjectEqual(t, db, new1, key, namespace)
 
 	// Should not be be able to update with the same version twice, since it is now no
 	// longer later than previous version (it is the equal version on disk).
 	update, err = db.Update(new1)
 	require.EqualError(t, err, "cannot update object, it is not a later version then the current object")
-	require.Equal(t, honu.UpdateNoChange, update)
+	require.Equal(t, UpdateNoChange, update)
 
 	// Should be able to force the update to apply the same object back to disk.
 	update, err = db.Update(new1, options.WithForce())
 	require.NoError(t, err, "could not force update with new1")
-	require.Equal(t, honu.UpdateForced, update)
+	require.Equal(t, UpdateForced, update)
 
 	// Generate new2 - an object stomping new1 as though it were from a different replica
 	new2 := &object.Object{
@@ -326,21 +326,21 @@ func TestUpdate(t *testing.T) {
 	// Update with the wrong namespace should error
 	update, err = db.Update(new2, options.WithNamespace("this is not the right namespace for sure"))
 	require.EqualError(t, err, "options namespace does not match object namespace")
-	require.Equal(t, honu.UpdateNoChange, update)
+	require.Equal(t, UpdateNoChange, update)
 	requireObjectEqual(t, db, new1, key, namespace)
 
 	// Update with the wrong namespace but with force should not error and create a new object
 	// NOTE: this is kind of a wild force since now the object has the wrong namespace metadata.
 	update, err = db.Update(new2, options.WithNamespace("trashcan"), options.WithForce())
 	require.NoError(t, err)
-	require.Equal(t, honu.UpdateForced, update)
+	require.Equal(t, UpdateForced, update)
 	requireObjectEqual(t, db, new1, key, namespace)
 	requireObjectEqual(t, db, new2, key, "trashcan")
 
 	// Update with same namespace option should not error.
 	update, err = db.Update(new2, options.WithNamespace(namespace))
 	require.NoError(t, err, "could not update new2")
-	require.Equal(t, honu.UpdateStomp, update)
+	require.Equal(t, UpdateStomp, update)
 	requireObjectEqual(t, db, new2, key, namespace)
 
 	// Generate new3 - an object skipping new2 as though it were from the same replica
@@ -360,19 +360,19 @@ func TestUpdate(t *testing.T) {
 	// Ensure UpdateSkip is returned
 	update, err = db.Update(new3)
 	require.NoError(t, err, "could not update new3")
-	require.Equal(t, honu.UpdateSkip, update)
+	require.Equal(t, UpdateSkip, update)
 	requireObjectEqual(t, db, new3, key, namespace)
 
 	// Update with an earlier version should error
 	update, err = db.Update(new1)
 	require.EqualError(t, err, "cannot update object, it is not a later version then the current object")
-	require.Equal(t, honu.UpdateNoChange, update)
+	require.Equal(t, UpdateNoChange, update)
 	requireObjectEqual(t, db, new3, key, namespace)
 
 	// Should be able to force the update to apply the earlier object back to disk
 	update, err = db.Update(new1, options.WithForce())
 	require.NoError(t, err, "could not force update with new1")
-	require.Equal(t, honu.UpdateForced, update)
+	require.Equal(t, UpdateForced, update)
 	requireObjectEqual(t, db, new1, key, namespace)
 
 	// Update an object that does not exist should not error.
@@ -391,7 +391,7 @@ func TestUpdate(t *testing.T) {
 
 	update, err = db.Update(stranger)
 	require.NoError(t, err)
-	require.Equal(t, honu.UpdateLinear, update)
+	require.Equal(t, UpdateLinear, update)
 }
 
 func TestTombstones(t *testing.T) {
@@ -599,7 +599,7 @@ func TestTombstonesMultipleNamespaces(t *testing.T) {
 }
 
 // Helper assertion function to check to make sure an object matches what is in the database
-func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key []byte, namespace string) {
+func requireObjectEqual(t *testing.T, db *DB, expected *object.Object, key []byte, namespace string) {
 	actual, err := db.Object(key, options.WithNamespace(namespace))
 	require.NoError(t, err, "could not fetch expected object from the database")
 
@@ -623,7 +623,7 @@ func requireObjectEqual(t *testing.T, db *honu.DB, expected *object.Object, key 
 	require.True(t, bytes.Equal(expected.Data, actual.Data), "value is not equal")
 }
 
-func requireNamespaceLen(t *testing.T, db *honu.DB, namespace string, expected int) {
+func requireNamespaceLen(t *testing.T, db *DB, namespace string, expected int) {
 	iter, err := db.Iter(nil, options.WithNamespace(namespace))
 	require.NoError(t, err)
 
@@ -637,7 +637,7 @@ func requireNamespaceLen(t *testing.T, db *honu.DB, namespace string, expected i
 	require.Equal(t, expected, actual)
 }
 
-func requireGraveyardLen(t *testing.T, db *honu.DB, namespace string, expected int) {
+func requireGraveyardLen(t *testing.T, db *DB, namespace string, expected int) {
 	iter, err := db.Iter(nil, options.WithNamespace(namespace), options.WithTombstones())
 	require.NoError(t, err)
 
@@ -651,7 +651,7 @@ func requireGraveyardLen(t *testing.T, db *honu.DB, namespace string, expected i
 	require.Equal(t, expected, actual)
 }
 
-func requireDatabaseLen(t *testing.T, db *honu.DB, expected int) {
+func requireDatabaseLen(t *testing.T, db *DB, expected int) {
 	engine, ok := db.Engine().(*leveldb.LevelDBEngine)
 	require.True(t, ok, "database len requires a leveldb engine")
 	ldb := engine.DB()

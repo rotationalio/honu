@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/rotationalio/honu/config"
-	engine "github.com/rotationalio/honu/engines"
-	"github.com/rotationalio/honu/engines/leveldb"
+	engine "github.com/rotationalio/honu/db/engines"
+	"github.com/rotationalio/honu/db/engines/leveldb"
 	"github.com/rotationalio/honu/iterator"
 	pb "github.com/rotationalio/honu/object"
 	"github.com/rotationalio/honu/options"
