@@ -17,7 +17,7 @@ func main() {
 
 	// Create HonuDB command line application
 	app := cli.NewApp()
-	app.Name = "honudb"
+	app.Name = "honu"
 	app.Version = honu.Version()
 	app.Usage = "run and manage a honudb replica service"
 	app.Flags = []cli.Flag{}

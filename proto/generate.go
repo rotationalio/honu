@@ -1,3 +1,3 @@
 package pb
 
-//go:generate protoc -I . --go_out=.. --go_opt=module=github.com/rotationalio/honu --go-grpc_out=.. --go-grpc_opt=module=github.com/rotationalio/honu object/v1/object.proto replica/v1/replica.proto pagination/v1/pagination.proto peers/v1/peers.proto honu/v1/honu.proto
+//go:generate protoc -I . --go_out=.. --go_opt=module=github.com/rotationalio/honu --go-grpc_out=.. --go-grpc_opt=module=github.com/rotationalio/honu object/v1/object.proto replica/v1/replica.proto pagination/v1/pagination.proto peers/v1/peers.proto honu/v1/honu.proto mimetype/v1/charset.proto mimetype/v1/mimetype.proto region/v1/region.proto

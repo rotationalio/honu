@@ -1,11 +1,11 @@
-project_name: honudb
+project_name: honu
 dist: dist
 builds:
   # Define multiple builds as a yaml list, specify by a unique id
-  - id: "cmd-honudb-build"
+  - id: "cmd-honu-build"
     dir: .
-    main: ./cmd/honudb
-    binary: honudb
+    main: ./cmd/honu
+    binary: honu
     flags:
       - -v
     ldflags: -s -w -X github.com/rotationalio/honu.GitVersion={{.Commit}} -X github.com/rotationalio/honu.BuildDate={{.Date}}
@@ -28,10 +28,10 @@ builds:
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
-  - id: "honudb-archive-tgz"
+  - id: "honu-archive-tgz"
     format: tar.gz
     builds:
-      - "cmd-honudb-build"
+      - "cmd-honu-build"
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     wrap_in_directory: true
     files:
@@ -72,9 +72,6 @@ release:
   disable: false
 
 changelog:
-  # Set it to true if you wish to skip the changelog generation.
-  skip: false
-
   filters:
     # Commit messages matching the regexp listed here will be removed from the changelog
     exclude:
