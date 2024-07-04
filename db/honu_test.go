@@ -11,7 +11,7 @@ import (
 	. "github.com/rotationalio/honu/db"
 	engine "github.com/rotationalio/honu/db/engines"
 	"github.com/rotationalio/honu/db/engines/leveldb"
-	"github.com/rotationalio/honu/object"
+	"github.com/rotationalio/honu/object/v1"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
 )

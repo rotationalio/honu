@@ -1,7 +1,7 @@
 package iterator
 
 import (
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	"github.com/rotationalio/honu/options"
 )
 

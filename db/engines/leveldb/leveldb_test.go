@@ -8,7 +8,7 @@ import (
 	engine "github.com/rotationalio/honu/db/engines"
 	"github.com/rotationalio/honu/db/engines/leveldb"
 	"github.com/rotationalio/honu/iterator"
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	"github.com/rotationalio/honu/options"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

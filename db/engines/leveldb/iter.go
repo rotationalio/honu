@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	honuiter "github.com/rotationalio/honu/iterator"
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	opts "github.com/rotationalio/honu/options"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"google.golang.org/protobuf/proto"

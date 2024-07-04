@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/rotationalio/honu/config"
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	. "github.com/rotationalio/honu/versions"
 	"github.com/stretchr/testify/require"
 )

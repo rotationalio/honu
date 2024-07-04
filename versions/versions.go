@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rotationalio/honu/config"
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

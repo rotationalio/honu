@@ -14,7 +14,7 @@ import (
 	"github.com/rotationalio/honu/db/engines/leveldb"
 	"github.com/rotationalio/honu/db/engines/pebble"
 	"github.com/rotationalio/honu/iterator"
-	pb "github.com/rotationalio/honu/object"
+	pb "github.com/rotationalio/honu/object/v1"
 	opts "github.com/rotationalio/honu/options"
 	"github.com/rotationalio/honu/versions"
 	"google.golang.org/protobuf/proto"

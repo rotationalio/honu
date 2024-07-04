@@ -1,7 +1,6 @@
 syntax = "proto3";
 
-package region.v1;
-
+package honu.region.v1;
 option go_package = "github.com/rotationalio/honu/region";
 
 import "google/protobuf/timestamp.proto";

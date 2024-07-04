@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rotationalio/honu/pagination"
+	"github.com/rotationalio/honu/pagination/v1"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"

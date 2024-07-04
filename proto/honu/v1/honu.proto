@@ -1,8 +1,6 @@
 syntax = "proto3";
 
 package honu.v1;
-option go_package = "github.com/rotationalio/honu/api";
-
 
 service Honu {
     // Get is a unary request to retrieve a value for a key.

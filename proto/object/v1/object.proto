@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 package honu.object.v1;
-
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/rotationalio/honu/object";
