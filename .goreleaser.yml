@@ -2,10 +2,10 @@ project_name: honu
 dist: dist
 builds:
   # Define multiple builds as a yaml list, specify by a unique id
-  - id: "cmd-honu-build"
+  - id: "cmd-honudb-build"
     dir: .
-    main: ./cmd/honu
-    binary: honu
+    main: ./cmd/honudb
+    binary: honudb
     flags:
       - -v
     ldflags: -s -w -X github.com/rotationalio/honu.GitVersion={{.Commit}} -X github.com/rotationalio/honu.BuildDate={{.Date}}
@@ -31,7 +31,7 @@ archives:
   - id: "honu-archive-tgz"
     format: tar.gz
     builds:
-      - "cmd-honu-build"
+      - "cmd-honudb-build"
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     wrap_in_directory: true
     files:
@@ -62,11 +62,11 @@ release:
   footer: |
     ### About
 
-    Honu is distributed key-value store that is intended for large systems of replicas
-    that are distributed across the globe. Honu provides an eventually consistent
-    replication semantic that uses reinforcement learning to optimize replication to
-    lower both costs and the instances of stale reads and write forks. If you're
-    interested in this project, please see https://geodistributed.systems for more.
+    The Honu Database is an eventually consistent replicated document database that
+    is intended for large systems that are distributed globally. Honu uses reinforcement
+    learning with anti-entropy replication to enhance consistency and decrease costs.
+    Honu provides data governance with access controls, privacy, and provenance tracking
+    so that the use of your database complies with laws like GDPR.
 
   # If set to true, will not auto-publish the release.
   disable: false
