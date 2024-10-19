@@ -4,7 +4,10 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/rotationalio/honu)](https://goreportcard.com/report/github.com/rotationalio/honu)
 ![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/build.yaml/badge.svg?branch=main)
 
-**HonuDB is a replicated key-value store intended for large systems that are distributed globally. Although HonuDB uses an eventually consistent gossip protocol for replication, it uses reinforcement learning with multi-armed bandits to optimize replication. Adaptive consistency reduces costs (ingress and egress data transfer) as well as improves consistency by lowering the likelihood of stale reads or forked writes.**
+
+**NOTE**: _This is the `trtl` branch which is used to maintain compatibility with the v0 object model that is used as a dependency by the [trtl](https://github.com/trisacrypto/directory) database. Any modifications required by trtl should be appended to this branch and continued to be versioned as 0.X.X._
+
+HonuDB is a replicated key-value store intended for large systems that are distributed globally. Although HonuDB uses an eventually consistent gossip protocol for replication, it uses reinforcement learning with multi-armed bandits to optimize replication. Adaptive consistency reduces costs (ingress and egress data transfer) as well as improves consistency by lowering the likelihood of stale reads or forked writes.
 
 ## Benchmarks
 
