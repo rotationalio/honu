@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/rotationalio/honu/pkg/object/v1"
 	"github.com/rotationalio/honu/pkg/store"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestObjectSerialization(t *testing.T) {
@@ -26,6 +29,250 @@ func TestObjectSerialization(t *testing.T) {
 	require.NoError(t, err, "could not read object")
 
 	require.Equal(t, obj, cmp, "deserialized object does not match original")
+}
+
+func BenchmarkSerialization(b *testing.B) {
+
+	makeHonuEncode := func(objs []*store.Object) func(b *testing.B) {
+		return func(b *testing.B) {
+			b.StopTimer()
+			for n := 0; n < b.N; n++ {
+				w := &store.Writer{}
+				obj := objs[n%len(objs)]
+
+				b.StartTimer()
+				sz, err := obj.Write(w)
+				b.StopTimer()
+
+				if err != nil {
+					b.FailNow()
+				}
+
+				b.ReportMetric(float64(sz), "bytes")
+			}
+		}
+	}
+
+	makeHonuDecode := func(hnd [][]byte) func(b *testing.B) {
+		return func(b *testing.B) {
+			b.StopTimer()
+			for n := 0; n < b.N; n++ {
+				r := store.NewReader(hnd[n%len(hnd)])
+				obj := &store.Object{}
+
+				b.StartTimer()
+				err := obj.Read(r)
+				b.StopTimer()
+
+				if err != nil {
+					b.FailNow()
+				}
+			}
+
+		}
+	}
+
+	makeProtobufEncode := func(opbs []*object.Object) func(b *testing.B) {
+		return func(b *testing.B) {
+			b.StopTimer()
+			for n := 0; n < b.N; n++ {
+				obj := opbs[n%len(opbs)]
+
+				b.StartTimer()
+				data, err := proto.Marshal(obj)
+				b.StopTimer()
+
+				if err != nil {
+					b.FailNow()
+				}
+
+				b.ReportMetric(float64(len(data)), "bytes")
+			}
+		}
+	}
+
+	makeProtobufDecode := func(pbs [][]byte) func(b *testing.B) {
+		return func(b *testing.B) {
+			b.StopTimer()
+			for n := 0; n < b.N; n++ {
+				data := pbs[n%len(pbs)]
+				obj := &object.Object{}
+
+				b.StartTimer()
+				err := proto.Unmarshal(data, obj)
+				b.StopTimer()
+
+				if err != nil {
+					b.FailNow()
+				}
+			}
+		}
+	}
+
+	makeSizeBenchmark := func(size Size) func(b *testing.B) {
+		return func(b *testing.B) {
+			// Generate objects for testing
+			objs := make([]*store.Object, 256)
+			for i := range objs {
+				objs[i] = generateRandomObject(size)
+			}
+
+			opbs := make([]*object.Object, len(objs))
+			for i, obj := range objs {
+				opbs[i] = convertObject(obj)
+			}
+
+			b.Run("Encode", func(b *testing.B) {
+				b.Run("Honu", makeHonuEncode(objs))
+				b.Run("Protobuf", makeProtobufEncode(opbs))
+			})
+
+			hnd := make([][]byte, len(objs))
+			for i, obj := range objs {
+				w := &store.Writer{}
+				_, err := obj.Write(w)
+				if err != nil {
+					b.FailNow()
+				}
+				hnd[i] = w.Bytes()
+			}
+
+			pbs := make([][]byte, len(opbs))
+			for i, obj := range opbs {
+				var err error
+				pbs[i], err = proto.Marshal(obj)
+				if err != nil {
+					b.FailNow()
+				}
+			}
+
+			b.Run("Decode", func(b *testing.B) {
+				b.Run("Honu", makeHonuDecode(hnd))
+				b.Run("Protobuf", makeProtobufDecode(pbs))
+			})
+		}
+	}
+
+	b.Run("Small", makeSizeBenchmark(Small))
+}
+
+func convertObject(o *store.Object) *object.Object {
+	p := &object.Object{
+		Version:      convertVersion(o.Version),
+		Schema:       convertSchemaVersion(o.Schema),
+		Mimetype:     o.MIME,
+		Owner:        o.Owner[:],
+		Group:        o.Group[:],
+		Permissions:  []byte{o.Permissions},
+		Acl:          convertACL(o.ACL),
+		WriteRegions: o.WriteRegions,
+		Publisher:    convertPublisher(o.Publisher),
+		Encryption:   convertEncryption(o.Encryption),
+		Compression:  convertCompression(o.Compression),
+		Flags:        []byte{o.Flags},
+		Created:      timestamppb.New(o.Created),
+		Modified:     timestamppb.New(o.Modified),
+		Data:         o.Data,
+	}
+
+	return p
+}
+
+func convertVersion(v *store.Version) *object.Version {
+	if v == nil {
+		return nil
+	}
+
+	vers := &object.Version{
+		Pid:       v.PID,
+		Version:   v.Version,
+		Region:    v.Region,
+		Tombstone: v.Tombstone,
+		Created:   timestamppb.New(v.Created),
+	}
+
+	if v.Parent != nil {
+		vers.Parent = convertVersion(v.Parent)
+	}
+
+	return vers
+}
+
+func convertSchemaVersion(o *store.SchemaVersion) *object.SchemaVersion {
+	if o == nil {
+		return nil
+	}
+
+	return &object.SchemaVersion{
+		Name:         o.Name,
+		MajorVersion: o.Major,
+		MinorVersion: o.Minor,
+		PatchVersion: o.Patch,
+	}
+}
+
+func convertACL(a []*store.AccessControl) []*object.ACL {
+	if len(a) == 0 {
+		return nil
+	}
+
+	acl := make([]*object.ACL, len(a))
+	for i, c := range a {
+		acl[i] = &object.ACL{
+			ClientId:    c.ClientID[:],
+			Permissions: []byte{c.Permissions},
+		}
+	}
+
+	return acl
+}
+
+func convertPublisher(o *store.Publisher) *object.Publisher {
+	if o == nil {
+		return nil
+	}
+
+	return &object.Publisher{
+		PublisherId: o.PublisherID[:],
+		ClientId:    o.ClientID[:],
+		IpAddr:      o.IPAddress.String(),
+		UserAgent:   o.UserAgent,
+	}
+}
+
+func convertEncryption(o *store.Encryption) *object.Encryption {
+	if o == nil {
+		return nil
+	}
+
+	var encmap = map[store.EncryptionAlgorithm]object.Encryption_Algorithm{
+		store.Plaintext:       object.Encryption_PLAINTEXT,
+		store.AES256_GCM:      object.Encryption_AES256_GCM,
+		store.AES192_GCM:      object.Encryption_AES192_GCM,
+		store.AES128_GCM:      object.Encryption_AES128_GCM,
+		store.HMAC_SHA256:     object.Encryption_HMAC_SHA256,
+		store.RSA_OEAP_SHA512: object.Encryption_RSA_OAEP_SHA512,
+	}
+
+	return &object.Encryption{
+		PublicKeyId:         o.PublicKeyID,
+		EncryptionKey:       o.EncryptionKey,
+		HmacSecret:          o.HMACSecret,
+		Signature:           o.Signature,
+		SealingAlgorithm:    encmap[o.SealingAlgorithm],
+		EncryptionAlgorithm: encmap[o.EncryptionAlgorithm],
+		SignatureAlgorithm:  encmap[o.SignatureAlgorithm],
+	}
+}
+
+func convertCompression(o *store.Compression) *object.Compression {
+	if o == nil {
+		return nil
+	}
+	return &object.Compression{
+		Algorithm: object.Compression_Algorithm(int32(o.Algorithm)),
+		Level:     o.Level,
+	}
 }
 
 func generateRandomObject(size Size) *store.Object {
