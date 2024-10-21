@@ -81,7 +81,7 @@ func (o *Object) Size() (s int) {
 
 	s += 1                         // Flags
 	s += 2 * binary.MaxVarintLen64 // Created, Modified
-	s += len(o.Data)
+	s += len(o.Data) + binary.MaxVarintLen64
 	return
 }
 
