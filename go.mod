@@ -9,7 +9,6 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.5
-	google.golang.org/protobuf v1.35.1
 )
 
 require (
