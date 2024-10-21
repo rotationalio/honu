@@ -1,13 +1,15 @@
 module github.com/rotationalio/honu
 
-go 1.23.2
+go 1.23.1
 
 require (
 	github.com/joho/godotenv v1.5.1
+	github.com/oklog/ulid v1.3.1
 	github.com/rotationalio/confire v1.1.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.5
+	google.golang.org/protobuf v1.35.1
 )
 
 require (
