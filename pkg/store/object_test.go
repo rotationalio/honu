@@ -18,16 +18,13 @@ import (
 
 func TestObjectSerialization(t *testing.T) {
 	obj := generateRandomObject(Small)
-	w := &store.Writer{}
-	n, err := obj.Write(w)
-	require.NoError(t, err, "could not write object")
-	require.Greater(t, n, 512, "expected object to be greater than the minimum data size")
+	data, err := store.Marshal(obj)
+	require.NoError(t, err, "could not marshal object")
+	require.Greater(t, len(data), 512, "expected object to be greater than the minimum data size")
 
-	r := store.NewReader(w.Bytes())
 	cmp := &store.Object{}
-	err = cmp.Read(r)
-	require.NoError(t, err, "could not read object")
-
+	err = store.Unmarshal(data, cmp)
+	require.NoError(t, err, "could not unmarshal object")
 	require.Equal(t, obj, cmp, "deserialized object does not match original")
 }
 
@@ -37,18 +34,17 @@ func BenchmarkSerialization(b *testing.B) {
 		return func(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
-				w := &store.Writer{}
 				obj := objs[n%len(objs)]
 
 				b.StartTimer()
-				sz, err := obj.Write(w)
+				data, err := store.Marshal(obj)
 				b.StopTimer()
 
 				if err != nil {
 					b.FailNow()
 				}
 
-				b.ReportMetric(float64(sz), "bytes")
+				b.ReportMetric(float64(len(data)), "bytes")
 			}
 		}
 	}
@@ -57,11 +53,11 @@ func BenchmarkSerialization(b *testing.B) {
 		return func(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
-				r := store.NewReader(hnd[n%len(hnd)])
+				data := hnd[n%len(hnd)]
 				obj := &store.Object{}
 
 				b.StartTimer()
-				err := obj.Read(r)
+				err := store.Unmarshal(data, obj)
 				b.StopTimer()
 
 				if err != nil {
@@ -129,12 +125,11 @@ func BenchmarkSerialization(b *testing.B) {
 
 			hnd := make([][]byte, len(objs))
 			for i, obj := range objs {
-				w := &store.Writer{}
-				_, err := obj.Write(w)
+				data, err := store.Marshal(obj)
 				if err != nil {
 					b.FailNow()
 				}
-				hnd[i] = w.Bytes()
+				hnd[i] = data
 			}
 
 			pbs := make([][]byte, len(opbs))
@@ -154,6 +149,9 @@ func BenchmarkSerialization(b *testing.B) {
 	}
 
 	b.Run("Small", makeSizeBenchmark(Small))
+	b.Run("Medium", makeSizeBenchmark(Medium))
+	b.Run("Large", makeSizeBenchmark(Large))
+	b.Run("XLarge", makeSizeBenchmark(XLarge))
 }
 
 func convertObject(o *store.Object) *object.Object {

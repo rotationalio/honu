@@ -1,11 +1,16 @@
 package store
 
 import (
+	"encoding/binary"
 	"net"
 	"time"
 
 	"github.com/oklog/ulid"
 )
+
+//===========================================================================
+// Object Storage
+//===========================================================================
 
 type Object struct {
 	Version      *Version
@@ -25,122 +30,143 @@ type Object struct {
 	Data         []byte
 }
 
-func (o Object) Write(w *Writer) (n int, err error) {
-	var m int
-	if m, err = w.WriteBool(o.Version != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
+func (o *Object) Size() (s int) {
+	// Version size + not nil bool
+	s += 1
 	if o.Version != nil {
-		if m, err = o.Version.Write(w); err != nil {
-			return n + m, err
-		}
-		n += m
+		s += o.Version.Size()
 	}
 
-	if m, err = w.WriteBool(o.Schema != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
+	// SchemaVersion size + not nil bool
+	s += 1
 	if o.Schema != nil {
-		if m, err = o.Schema.Write(w); err != nil {
-			return n + m, err
+		s += o.Schema.Size()
+	}
+
+	s += len([]byte(o.MIME)) + binary.MaxVarintLen64
+	s += 16 + 16 + 1 // Owner, Group, Permissions
+
+	// ACL
+	s += (len(o.ACL) + 1) * binary.MaxVarintLen64
+	for _, ac := range o.ACL {
+		s += 1
+		if ac != nil {
+			s += ac.Size()
 		}
-		n += m
 	}
 
-	if m, err = w.WriteString(o.MIME); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteULID(o.Owner); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteULID(o.Group); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteUint8(o.Permissions); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteUint64(uint64(len(o.ACL))); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	for _, acl := range o.ACL {
-		// TODO: nil checks?
-		if m, err = acl.Write(w); err != nil {
-			return n + m, err
-		}
-		n += m
+	// Write Regions
+	s += (len(o.WriteRegions) + 1) * binary.MaxVarintLen64
+	for _, wr := range o.WriteRegions {
+		s += len([]byte(wr))
 	}
 
-	if m, err = w.WriteStrings(o.WriteRegions); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteBool(o.Publisher != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
+	// Publisher size + not nil bool
+	s += 1
 	if o.Publisher != nil {
-		if m, err = o.Publisher.Write(w); err != nil {
-			return n + m, err
-		}
-		n += m
+		s += o.Publisher.Size()
 	}
 
-	if m, err = w.WriteBool(o.Encryption != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
+	// Encryption size + not nil bool
+	s += 1
 	if o.Encryption != nil {
-		if m, err = o.Encryption.Write(w); err != nil {
-			return n + m, err
-		}
-		n += m
+		s += o.Encryption.Size()
 	}
 
-	if m, err = w.WriteBool(o.Compression != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
+	// Compression size + not nil bool
+	s += 1
 	if o.Compression != nil {
-		if m, err = o.Compression.Write(w); err != nil {
+		s += o.Compression.Size()
+	}
+
+	s += 1                         // Flags
+	s += 2 * binary.MaxVarintLen64 // Created, Modified
+	s += len(o.Data)
+	return
+}
+
+func (o *Object) Encode(e *Encoder) (n int, err error) {
+	var m int
+	if m, err = e.EncodeStruct(o.Version); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeStruct(o.Schema); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeString(o.MIME); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeULID(o.Owner); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeULID(o.Group); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint8(o.Permissions); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	// Encode ACL length
+	if m, err = e.EncodeUint64(uint64(len(o.ACL))); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	// Encode each ACL
+	for _, ac := range o.ACL {
+		if m, err = e.EncodeStruct(ac); err != nil {
 			return n + m, err
 		}
 		n += m
 	}
 
-	if m, err = w.WriteUint8(o.Flags); err != nil {
+	if m, err = e.EncodeStringSlice(o.WriteRegions); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteTime(o.Created); err != nil {
+	if m, err = e.EncodeStruct(o.Publisher); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteTime(o.Modified); err != nil {
+	if m, err = e.EncodeStruct(o.Encryption); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteBytes(o.Data); err != nil {
+	if m, err = e.EncodeStruct(o.Compression); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint8(o.Flags); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeTime(o.Created); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeTime(o.Modified); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.Encode(o.Data); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -148,129 +174,107 @@ func (o Object) Write(w *Writer) (n int, err error) {
 	return
 }
 
-func (o *Object) Read(r *Reader) (err error) {
-	var hasStruct bool
-	if hasStruct, err = r.ReadBool(); err != nil {
-		return err
-	}
+func (o *Object) Decode(d *Decoder) (err error) {
+	// Setup nested structs
+	o.Version = &Version{}
+	o.Schema = &SchemaVersion{}
+	o.Publisher = &Publisher{}
+	o.Encryption = &Encryption{}
+	o.Compression = &Compression{}
 
-	if hasStruct {
-		o.Version = &Version{}
-		if err = o.Version.Read(r); err != nil {
-			return err
-		}
-	} else {
+	var isNil bool
+	if isNil, err = d.DecodeStruct(o.Version); err != nil {
+		return err
+	} else if isNil {
 		o.Version = nil
 	}
 
-	if hasStruct, err = r.ReadBool(); err != nil {
+	if isNil, err = d.DecodeStruct(o.Schema); err != nil {
 		return err
-	}
-
-	if hasStruct {
-		o.Schema = &SchemaVersion{}
-		if err = o.Schema.Read(r); err != nil {
-			return err
-		}
-	} else {
+	} else if isNil {
 		o.Schema = nil
 	}
 
-	if o.MIME, err = r.ReadString(); err != nil {
+	if o.MIME, err = d.DecodeString(); err != nil {
 		return err
 	}
 
-	if o.Owner, err = r.ReadULID(); err != nil {
+	if o.Owner, err = d.DecodeULID(); err != nil {
 		return err
 	}
 
-	if o.Group, err = r.ReadULID(); err != nil {
+	if o.Group, err = d.DecodeULID(); err != nil {
 		return err
 	}
 
-	if o.Permissions, err = r.ReadUint8(); err != nil {
+	if o.Permissions, err = d.DecodeUint8(); err != nil {
 		return err
 	}
 
+	// Read the number of ACLs stored
 	var nACLs uint64
-	if nACLs, err = r.ReadUint64(); err != nil {
+	if nACLs, err = d.DecodeUint64(); err != nil {
 		return err
 	}
 
+	// Decode all ACLs
 	if nACLs > 0 {
 		o.ACL = make([]*AccessControl, nACLs)
-		for i := uint64(0); i < nACLs; i++ {
-			// TODO: check for nil?
+		for i := uint(0); i < uint(nACLs); i++ {
 			o.ACL[i] = &AccessControl{}
-			if err = o.ACL[i].Read(r); err != nil {
+			if isNil, err = d.DecodeStruct(o.ACL[i]); err != nil {
 				return err
 			}
+			if isNil {
+				o.ACL[i] = nil
+			}
 		}
-	} else {
-		o.ACL = nil
 	}
 
-	if o.WriteRegions, err = r.ReadStrings(); err != nil {
+	if o.WriteRegions, err = d.DecodeStringSlice(); err != nil {
 		return err
 	}
 
-	if hasStruct, err = r.ReadBool(); err != nil {
+	if isNil, err = d.DecodeStruct(o.Publisher); err != nil {
 		return err
-	}
-
-	if hasStruct {
-		o.Publisher = &Publisher{}
-		if err = o.Publisher.Read(r); err != nil {
-			return err
-		}
-	} else {
+	} else if isNil {
 		o.Publisher = nil
 	}
 
-	if hasStruct, err = r.ReadBool(); err != nil {
+	if isNil, err = d.DecodeStruct(o.Encryption); err != nil {
 		return err
-	}
-
-	if hasStruct {
-		o.Encryption = &Encryption{}
-		if err = o.Encryption.Read(r); err != nil {
-			return err
-		}
-	} else {
+	} else if isNil {
 		o.Encryption = nil
 	}
 
-	if hasStruct, err = r.ReadBool(); err != nil {
+	if isNil, err = d.DecodeStruct(o.Compression); err != nil {
 		return err
-	}
-
-	if hasStruct {
-		o.Compression = &Compression{}
-		if err = o.Compression.Read(r); err != nil {
-			return err
-		}
-	} else {
+	} else if isNil {
 		o.Compression = nil
 	}
 
-	if o.Flags, err = r.ReadUint8(); err != nil {
+	if o.Flags, err = d.DecodeUint8(); err != nil {
 		return err
 	}
 
-	if o.Created, err = r.ReadTime(); err != nil {
+	if o.Created, err = d.DecodeTime(); err != nil {
 		return err
 	}
 
-	if o.Modified, err = r.ReadTime(); err != nil {
+	if o.Modified, err = d.DecodeTime(); err != nil {
 		return err
 	}
 
-	if o.Data, err = r.ReadBytes(); err != nil {
+	if o.Data, err = d.Decode(); err != nil {
 		return err
 	}
 
-	return
+	return nil
 }
+
+//===========================================================================
+// Object Version
+//===========================================================================
 
 type Version struct {
 	PID       uint64
@@ -281,85 +285,95 @@ type Version struct {
 	Created   time.Time
 }
 
-func (v Version) Write(w *Writer) (n int, err error) {
-	var m int
-	if m, err = w.WriteUint64(v.PID); err != nil {
-		return n + m, err
-	}
-	n += m
+func (o *Version) Size() (s int) {
+	s += 2 * binary.MaxVarintLen64
+	s += len([]byte(o.Region)) + binary.MaxVarintLen64
 
-	if m, err = w.WriteUint64(v.Version); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteString(v.Region); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteBool(v.Parent != nil); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if v.Parent != nil {
-		if m, err = v.Parent.Write(w); err != nil {
-			return n + m, err
-		}
-		n += m
-	}
-
-	if m, err = w.WriteBool(v.Tombstone); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteTime(v.Created); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (v *Version) Read(r *Reader) (err error) {
-	if v.PID, err = r.ReadUint64(); err != nil {
-		return err
-	}
-
-	if v.Version, err = r.ReadUint64(); err != nil {
-		return err
-	}
-
-	if v.Region, err = r.ReadString(); err != nil {
-		return err
-	}
-
-	var hasParent bool
-	if hasParent, err = r.ReadBool(); err != nil {
-		return err
-	}
-
-	if hasParent {
-		v.Parent = &Version{}
-		if err = v.Parent.Read(r); err != nil {
-			return err
-		}
+	if o.Parent != nil {
+		s += o.Parent.Size() + 1 // Add 1 for the not nil bool
 	} else {
-		v.Parent = nil
+		s += 1 // Add 1 for the nil bool
 	}
 
-	if v.Tombstone, err = r.ReadBool(); err != nil {
-		return err
-	}
-
-	if v.Created, err = r.ReadTime(); err != nil {
-		return err
-	}
+	s += 1                     // Tombstone bool
+	s += binary.MaxVarintLen64 // Timestamp int64
 
 	return
 }
+
+func (o *Version) Encode(e *Encoder) (n int, err error) {
+	var m int
+	if m, err = e.EncodeUint64(o.PID); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint64(o.Version); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeString(o.Region); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeStruct(o.Parent); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeBool(o.Tombstone); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeTime(o.Created); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	return
+}
+
+func (o *Version) Decode(d *Decoder) (err error) {
+	if o.PID, err = d.DecodeUint64(); err != nil {
+		return err
+	}
+
+	if o.Version, err = d.DecodeUint64(); err != nil {
+		return err
+	}
+
+	if o.Region, err = d.DecodeString(); err != nil {
+		return err
+	}
+
+	var isNil bool
+	o.Parent = &Version{}
+
+	if isNil, err = d.DecodeStruct(o.Parent); err != nil {
+		return err
+	}
+
+	if isNil {
+		o.Parent = nil
+	}
+
+	if o.Tombstone, err = d.DecodeBool(); err != nil {
+		return err
+	}
+
+	if o.Created, err = d.DecodeTime(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//===========================================================================
+// Schema Version
+//===========================================================================
 
 type SchemaVersion struct {
 	Name  string
@@ -368,24 +382,30 @@ type SchemaVersion struct {
 	Patch uint32
 }
 
-func (v SchemaVersion) Write(w *Writer) (n int, err error) {
+func (o *SchemaVersion) Size() (s int) {
+	s += len([]byte(o.Name)) + binary.MaxVarintLen64
+	s += 3 * binary.MaxVarintLen32
+	return
+}
+
+func (o *SchemaVersion) Encode(e *Encoder) (n int, err error) {
 	var m int
-	if m, err = w.WriteString(v.Name); err != nil {
+	if m, err = e.EncodeString(o.Name); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteUint32(v.Major); err != nil {
+	if m, err = e.EncodeUint32(o.Major); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteUint32(v.Minor); err != nil {
+	if m, err = e.EncodeUint32(o.Minor); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteUint32(v.Patch); err != nil {
+	if m, err = e.EncodeUint32(o.Patch); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -393,39 +413,48 @@ func (v SchemaVersion) Write(w *Writer) (n int, err error) {
 	return
 }
 
-func (v *SchemaVersion) Read(r *Reader) (err error) {
-	if v.Name, err = r.ReadString(); err != nil {
+func (o *SchemaVersion) Decode(d *Decoder) (err error) {
+	if o.Name, err = d.DecodeString(); err != nil {
 		return err
 	}
 
-	if v.Major, err = r.ReadUint32(); err != nil {
+	if o.Major, err = d.DecodeUint32(); err != nil {
 		return err
 	}
 
-	if v.Minor, err = r.ReadUint32(); err != nil {
+	if o.Minor, err = d.DecodeUint32(); err != nil {
 		return err
 	}
 
-	if v.Patch, err = r.ReadUint32(); err != nil {
+	if o.Patch, err = d.DecodeUint32(); err != nil {
 		return err
 	}
 
-	return
+	return nil
 }
+
+//===========================================================================
+// ACL
+//===========================================================================
 
 type AccessControl struct {
 	ClientID    ulid.ULID
 	Permissions uint8
 }
 
-func (c AccessControl) Write(w *Writer) (n int, err error) {
+func (o *AccessControl) Size() int {
+	// ULID + 1 byte
+	return 17
+}
+
+func (o *AccessControl) Encode(e *Encoder) (n int, err error) {
 	var m int
-	if m, err = w.WriteULID(c.ClientID); err != nil {
+	if m, err = e.EncodeULID(o.ClientID); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteUint8(c.Permissions); err != nil {
+	if m, err = e.EncodeUint8(o.Permissions); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -433,17 +462,21 @@ func (c AccessControl) Write(w *Writer) (n int, err error) {
 	return
 }
 
-func (c *AccessControl) Read(r *Reader) (err error) {
-	if c.ClientID, err = r.ReadULID(); err != nil {
+func (o *AccessControl) Decode(d *Decoder) (err error) {
+	if o.ClientID, err = d.DecodeULID(); err != nil {
 		return err
 	}
 
-	if c.Permissions, err = r.ReadUint8(); err != nil {
+	if o.Permissions, err = d.DecodeUint8(); err != nil {
 		return err
 	}
 
-	return
+	return nil
 }
+
+//===========================================================================
+// Provenance
+//===========================================================================
 
 type Publisher struct {
 	PublisherID ulid.ULID
@@ -452,24 +485,32 @@ type Publisher struct {
 	UserAgent   string
 }
 
-func (p Publisher) Write(w *Writer) (n int, err error) {
+func (o *Publisher) Size() (s int) {
+	// 2 ULIDs and 2 variable byte arrays
+	s += 16 + 16
+	s += len(o.IPAddress) + binary.MaxVarintLen64
+	s += len([]byte(o.UserAgent)) + binary.MaxVarintLen64
+	return
+}
+
+func (o *Publisher) Encode(e *Encoder) (n int, err error) {
 	var m int
-	if m, err = w.WriteULID(p.PublisherID); err != nil {
+	if m, err = e.EncodeULID(o.PublisherID); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteULID(p.ClientID); err != nil {
+	if m, err = e.EncodeULID(o.ClientID); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteBytes(p.IPAddress); err != nil {
+	if m, err = e.Encode(o.IPAddress); err != nil {
 		return n + m, err
 	}
 	n += m
 
-	if m, err = w.WriteString(p.UserAgent); err != nil {
+	if m, err = e.EncodeString(o.UserAgent); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -477,147 +518,31 @@ func (p Publisher) Write(w *Writer) (n int, err error) {
 	return
 }
 
-func (p *Publisher) Read(r *Reader) (err error) {
-	if p.PublisherID, err = r.ReadULID(); err != nil {
+func (o *Publisher) Decode(d *Decoder) (err error) {
+	if o.PublisherID, err = d.DecodeULID(); err != nil {
 		return err
 	}
 
-	if p.ClientID, err = r.ReadULID(); err != nil {
+	if o.ClientID, err = d.DecodeULID(); err != nil {
 		return err
 	}
 
 	var ip []byte
-	if ip, err = r.ReadBytes(); err != nil {
+	if ip, err = d.Decode(); err != nil {
 		return err
 	}
-	p.IPAddress = net.IP(ip)
+	o.IPAddress = net.IP(ip)
 
-	if p.UserAgent, err = r.ReadString(); err != nil {
-		return err
-	}
-
-	return
-}
-
-type Encryption struct {
-	PublicKeyID         string
-	EncryptionKey       []byte
-	HMACSecret          []byte
-	Signature           []byte
-	SealingAlgorithm    EncryptionAlgorithm
-	EncryptionAlgorithm EncryptionAlgorithm
-	SignatureAlgorithm  EncryptionAlgorithm
-}
-
-func (e Encryption) Write(w *Writer) (n int, err error) {
-	var m int
-	if m, err = w.WriteString(e.PublicKeyID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteBytes(e.EncryptionKey); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteBytes(e.HMACSecret); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteBytes(e.Signature); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteUint8(uint8(e.SealingAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteUint8(uint8(e.EncryptionAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteUint8(uint8(e.SignatureAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (e *Encryption) Read(r *Reader) (err error) {
-	if e.PublicKeyID, err = r.ReadString(); err != nil {
-		return err
-	}
-
-	if e.EncryptionKey, err = r.ReadBytes(); err != nil {
-		return err
-	}
-
-	if e.HMACSecret, err = r.ReadBytes(); err != nil {
-		return err
-	}
-
-	if e.Signature, err = r.ReadBytes(); err != nil {
-		return err
-	}
-
-	var a uint8
-	if a, err = r.ReadUint8(); err != nil {
-		return err
-	}
-	e.SealingAlgorithm = EncryptionAlgorithm(a)
-
-	if a, err = r.ReadUint8(); err != nil {
-		return err
-	}
-	e.EncryptionAlgorithm = EncryptionAlgorithm(a)
-
-	if a, err = r.ReadUint8(); err != nil {
-		return err
-	}
-	e.SignatureAlgorithm = EncryptionAlgorithm(a)
-
-	return
-}
-
-type Compression struct {
-	Algorithm CompressionAlgorithm
-	Level     int64
-}
-
-func (c Compression) Write(w *Writer) (n int, err error) {
-	var m int
-	if m, err = w.WriteUint8(uint8(c.Algorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = w.WriteInt64(c.Level); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (c *Compression) Read(r *Reader) (err error) {
-	var a uint8
-	if a, err = r.ReadUint8(); err != nil {
-		return err
-	}
-	c.Algorithm = CompressionAlgorithm(a)
-
-	if c.Level, err = r.ReadInt64(); err != nil {
+	if o.UserAgent, err = d.DecodeString(); err != nil {
 		return err
 	}
 
 	return nil
 }
+
+//===========================================================================
+// Encryption
+//===========================================================================
 
 type EncryptionAlgorithm uint8
 
@@ -630,6 +555,106 @@ const (
 	RSA_OEAP_SHA512
 )
 
+type Encryption struct {
+	PublicKeyID         string
+	EncryptionKey       []byte
+	HMACSecret          []byte
+	Signature           []byte
+	SealingAlgorithm    EncryptionAlgorithm
+	EncryptionAlgorithm EncryptionAlgorithm
+	SignatureAlgorithm  EncryptionAlgorithm
+}
+
+func (o *Encryption) Size() (s int) {
+	s += len([]byte(o.PublicKeyID)) + binary.MaxVarintLen64
+	s += len(o.EncryptionKey) + binary.MaxVarintLen64
+	s += len(o.HMACSecret) + binary.MaxVarintLen64
+	s += len(o.Signature) + binary.MaxVarintLen64
+	s += 3 // the three encryption algorithm bytes
+
+	return
+}
+
+func (o *Encryption) Encode(e *Encoder) (n int, err error) {
+	var m int
+	if m, err = e.EncodeString(o.PublicKeyID); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.Encode(o.EncryptionKey); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.Encode(o.HMACSecret); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.Encode(o.Signature); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint8(uint8(o.SealingAlgorithm)); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint8(uint8(o.EncryptionAlgorithm)); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeUint8(uint8(o.SignatureAlgorithm)); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	return
+}
+
+func (o *Encryption) Decode(d *Decoder) (err error) {
+	if o.PublicKeyID, err = d.DecodeString(); err != nil {
+		return err
+	}
+
+	if o.EncryptionKey, err = d.Decode(); err != nil {
+		return err
+	}
+
+	if o.HMACSecret, err = d.Decode(); err != nil {
+		return err
+	}
+
+	if o.Signature, err = d.Decode(); err != nil {
+		return err
+	}
+
+	var a uint8
+	if a, err = d.DecodeUint8(); err != nil {
+		return err
+	}
+	o.SealingAlgorithm = EncryptionAlgorithm(a)
+
+	if a, err = d.DecodeUint8(); err != nil {
+		return err
+	}
+	o.EncryptionAlgorithm = EncryptionAlgorithm(a)
+
+	if a, err = d.DecodeUint8(); err != nil {
+		return err
+	}
+	o.SignatureAlgorithm = EncryptionAlgorithm(a)
+
+	return nil
+}
+
+//===========================================================================
+// Compression
+//===========================================================================
+
 type CompressionAlgorithm uint8
 
 const (
@@ -639,3 +664,41 @@ const (
 	DEFLATE
 	BROTLI
 )
+
+type Compression struct {
+	Algorithm CompressionAlgorithm
+	Level     int64
+}
+
+func (o *Compression) Size() int {
+	return 1 + binary.MaxVarintLen64
+}
+
+func (o *Compression) Encode(e *Encoder) (n int, err error) {
+	var m int
+	if m, err = e.EncodeUint8(uint8(o.Algorithm)); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeInt64(o.Level); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	return
+}
+
+func (o *Compression) Decode(d *Decoder) (err error) {
+	var a uint8
+	if a, err = d.DecodeUint8(); err != nil {
+		return err
+	}
+	o.Algorithm = CompressionAlgorithm(a)
+
+	if o.Level, err = d.DecodeInt64(); err != nil {
+		return err
+	}
+
+	return nil
+}

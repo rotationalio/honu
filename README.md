@@ -19,10 +19,10 @@ goos: darwin
 goarch: arm64
 pkg: github.com/rotationalio/honu/pkg/store
 cpu: Apple M1 Max
-BenchmarkSerialization/Small/Encode/Honu-10         	  287677	      4170 ns/op	      2323 bytes	   10089 B/op	      20 allocs/op
-BenchmarkSerialization/Small/Encode/Protobuf-10     	  374221	      3105 ns/op	      5000 bytes	    3980 B/op	       1 allocs/op
-BenchmarkSerialization/Small/Decode/Honu-10         	  419572	      3116 ns/op	    4635 B/op	      60 allocs/op
-BenchmarkSerialization/Small/Decode/Protobuf-10     	  141960	      7732 ns/op	    8368 B/op	     128 allocs/op
-PASS
-ok  	github.com/rotationalio/honu/pkg/store	58.097s
+BenchmarkSerialization/Small/Encode/Honu-10         	  653840	      1905 ns/op	      1471 bytes	    4319 B/op	       2 allocs/op
+BenchmarkSerialization/Small/Encode/Protobuf-10     	  346150	      3164 ns/op	      2426 bytes	    4044 B/op	       1 allocs/op
+BenchmarkSerialization/Small/Decode/Honu-10         	  343032	      3421 ns/op	    4784 B/op	      62 allocs/op
+BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	    8367 B/op	     127 allocs/op
 ```
+
+![Benchmarks](./docs/serialization-benchmark.png)
