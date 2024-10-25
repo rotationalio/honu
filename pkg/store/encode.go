@@ -215,6 +215,9 @@ func (e *Encoder) EncodeULID(u ulid.ULID) (int, error) {
 // Encode a timestamp as a unix epoch int64 with nanoseconds resolution.
 // Shortcut for EncodeInt64(t.UnixNano())
 func (e *Encoder) EncodeTime(t time.Time) (int, error) {
+	if t.IsZero() {
+		return e.EncodeInt64(0)
+	}
 	return e.EncodeInt64(t.UnixNano())
 }
 
@@ -311,6 +314,7 @@ func (e *Encoder) grow(n int) int {
 	c := cap(e.buf)
 	if n <= c/2-m {
 		// Try to slide data down instead of allocating a new slice
+		// TODO: is this case ever possible to reach? It is untested right now.
 		copy(e.buf, e.buf[e.off:])
 	} else if c > maxInt-c-n {
 		// If we can't grow the slice then we need to panic

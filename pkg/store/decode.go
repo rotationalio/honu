@@ -237,6 +237,12 @@ func (d *Decoder) DecodeTime() (_ time.Time, err error) {
 	if ts, err = d.DecodeInt64(); err != nil {
 		return time.Time{}, err
 	}
+
+	// Handle zero-valued time
+	if ts == 0 {
+		return time.Time{}, nil
+	}
+
 	return time.Unix(0, ts), nil
 }
 
