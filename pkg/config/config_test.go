@@ -13,6 +13,7 @@ var testEnv = map[string]string{
 	"HONU_MAINTENANCE": "true",
 	"HONU_LOG_LEVEL":   "debug",
 	"HONU_CONSOLE_LOG": "true",
+	"HONU_BIND_ADDR":   "127.0.0.1:443",
 }
 
 func TestConfig(t *testing.T) {
@@ -28,6 +29,7 @@ func TestConfig(t *testing.T) {
 	require.True(t, conf.Maintenance)
 	require.Equal(t, zerolog.DebugLevel, conf.GetLogLevel())
 	require.True(t, conf.ConsoleLog)
+	require.Equal(t, testEnv["HONU_BIND_ADDR"], conf.BindAddr)
 }
 
 // Returns the current environment for the specified keys, or if no keys are specified

@@ -1,13 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"text/tabwriter"
 
-	"github.com/joho/godotenv"
 	"github.com/rotationalio/honu/pkg"
 	"github.com/rotationalio/honu/pkg/config"
+	"github.com/rotationalio/honu/pkg/server"
+
+	"github.com/joho/godotenv"
+	confire "github.com/rotationalio/confire/usage"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,6 +32,19 @@ func main() {
 			Action:   serve,
 			Flags:    []cli.Flag{},
 		},
+		{
+			Name:     "config",
+			Usage:    "print honu database replica configuration guide",
+			Category: "server",
+			Action:   usage,
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "list",
+					Aliases: []string{"l"},
+					Usage:   "print in list mode instead of table mode",
+				},
+			},
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -41,12 +57,34 @@ func main() {
 //===========================================================================
 
 func serve(c *cli.Context) (err error) {
-	// Load the configuration from a file or from the environment.
 	var conf config.Config
 	if conf, err = config.New(); err != nil {
 		return cli.Exit(err, 1)
 	}
 
-	fmt.Println(conf)
+	var honu *server.Server
+	if honu, err = server.New(conf); err != nil {
+		return cli.Exit(err, 1)
+	}
+
+	if err = honu.Serve(); err != nil {
+		return cli.Exit(err, 1)
+	}
+	return nil
+}
+
+func usage(c *cli.Context) error {
+	tabs := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
+	format := confire.DefaultTableFormat
+	if c.Bool("list") {
+		format = confire.DefaultListFormat
+	}
+
+	var conf config.Config
+	if err := confire.Usagef(config.Prefix, &conf, tabs, format); err != nil {
+		return cli.Exit(err, 1)
+	}
+
+	tabs.Flush()
 	return nil
 }
