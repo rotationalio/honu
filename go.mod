@@ -7,7 +7,6 @@ require (
 	github.com/google/go-querystring v1.1.0
 	github.com/joho/godotenv v1.5.1
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/oklog/ulid v1.3.1
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/rotationalio/confire v1.1.0
 	github.com/rs/zerolog v1.33.0

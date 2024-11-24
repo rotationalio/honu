@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	. "github.com/rotationalio/honu/pkg/store"
 	"github.com/stretchr/testify/require"
 )

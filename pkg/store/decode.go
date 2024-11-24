@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 )
 
 // Unmarshal a decodable object from a byte slice for deserialization.
