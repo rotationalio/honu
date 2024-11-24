@@ -62,6 +62,9 @@ func New(conf config.Config) (s *Server, err error) {
 	s.router.RedirectFixedPath = true
 	s.router.HandleMethodNotAllowed = true
 	s.router.RedirectTrailingSlash = true
+	if err = s.setupRoutes(); err != nil {
+		return nil, err
+	}
 
 	// Create the http server
 	s.srv = &http.Server{
@@ -121,7 +124,7 @@ func (s *Server) Serve() (err error) {
 	}()
 
 	log.Info().Str("url", s.URL()).Msg("honu database server started")
-	return nil
+	return <-s.errc
 }
 
 // ServeTLS if a tls configuration is provided, otherwise Serve.
