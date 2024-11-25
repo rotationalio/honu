@@ -3,7 +3,10 @@
 {{ end }}
 
 {{ define "main" }}
-  <div>
-    {{ .Content }}
-  </div>
+  {{ if .Params.disableTOC }}
+  <div class="col-md-12" role="main">{{ block "content" . }}{{ end }}</div>
+  {{ else }}
+  <div class="col-md-3">{{ block "toc" . }}{{ end }}</div>
+  <div class="col-md-9" role="main">{{ block "content" . }}{{ .Content }}{{ end }}</div>
+  {{ end }}
 {{ end }}

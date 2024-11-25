@@ -1,5 +1,28 @@
 baseURL: https://honudb.dev
-title: Honu DB
+title: HonuDB
+
+params:
+  author: Rotational Labs
+  description: Documentation for the Honu Replicated Database, a document and object storage database replicated using adaptive anti-entropy and well suited for data governance and ML/AL workloads.
+  keywords: HonuDB, database, global replication, data storage, data governance, anti-entropy replication, LLM database, Artificial Intelligence Database, Machine Learning Database, vector database, globally distributed database
+  image: img/logo.png
+  googleAnalytics: "" # Google Analytics ID (set $HUGO_PARAMS_GOOGLEANALYTICS)
+
+  highlightjs:
+    colorscheme: null
+    languages: []
+
+taxonomies:
+  tag: tags
+  category: categories
+
+languages:
+  en:
+    languageName: "En"
+    languageCode: "en-us"
+    weight: 1
+
+enableRobotsTXT: true
 
 module:
   hugoVersion:
