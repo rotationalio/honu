@@ -1,0 +1,24 @@
+{{ $data := index site.Data site.Language.Lang }}
+{{- with $data.team.team -}}
+/* TEAM */
+
+{{ range .team_member }}
+{{ .designation }}: {{ .name }}
+Bio: {{ .bioLink | absURL }}
+{{ end }}
+{{ end }}
+
+/* SITE */
+
+Last update: {{ now.Format "2006-01-02" }}
+Site name: {{ .Site.Title }}
+URL: {{ .Site.BaseURL }}
+CMS: Hugo
+Host: GitHub Pages
+Language: {{ range $i, $l := site.Languages }}{{ if $i }}, {{ end }}{{ .LanguageName }}{{ end }}
+Doctype: HTML5
+Standards: HTML5, CSS3, Open Graph protocol, Schema.org
+Components: Hugo, FontAwesome, Flowbite, HighlightJS, Lunr.js
+IDE: VSCode, Atom, Vim, MacVim
+
+[Credit for this page: http://humanstxt.org/]

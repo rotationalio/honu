@@ -1,0 +1,7 @@
+baseURL: https://honudb.dev
+title: Honu DB
+
+module:
+  hugoVersion:
+    extended: true
+    min: 0.110.0

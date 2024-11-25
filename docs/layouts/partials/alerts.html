@@ -1,0 +1,20 @@
+{{ $data := index site.Data site.Language.Lang }}
+
+{{ with $data.alerts.notice }}
+{{ if .enable }}
+{{ $expires := sub (time .expires).Unix now.Unix }}
+{{ if gt $expires 0}}
+<div class="bg-[#192E5B] border-b-2 border-[#72A2C0] text-white py-5" role="alert">
+  <p class="text-lg text-center">
+    {{ .notice | markdownify }}
+    {{ if .action }}
+    <span class="px-2">|</span>
+    <a href="{{ .action.link }}" target="_blank" class="underline hover:text-slate-400">
+      {{ .action.text }}
+    </a>
+    {{ end }}
+  </p>
+</div>
+{{ end }}
+{{ end }}
+{{ end }}
