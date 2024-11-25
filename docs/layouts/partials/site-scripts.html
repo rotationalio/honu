@@ -1,0 +1,12 @@
+
+  {{ "<!-- Application Scripts -->" | safeHTML }}
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+  <script src="{{ `js/bootstrap-3.0.3.min.js` | absURL }}"></script>
+  <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.18.0/build/highlight.min.js"></script>
+  {{- if site.Params.highlightjs.languages }}
+    {{- range site.Params.highlightjs.languages }}
+  <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.18.0/build/languages/{{ . }}.min.js"></script>
+    {{- end }}
+  {{- end }}
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script src="{{ `js/base.js` | absURL }}"></script>

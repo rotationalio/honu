@@ -1,0 +1,68 @@
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{{ block "title" . }}{{ .Site.Title }}{{ with .Params.Title }} | {{ . }}{{ end }}{{ end }}</title>
+  <base href="{{ .Site.BaseURL }}" target="_self">
+
+  {{- $title := .Params.Title -}}{{ if not .Params.Title }}{{ $title = .Site.Title }}{{ end }}
+  {{- $description := .Params.description -}}{{ if not .Params.description }}{{ $description = .Site.Params.description }}{{ end }}
+  {{- $author := .Params.author -}}{{ if not .Params.author }}{{ $author = .Site.Params.author }}{{ end }}
+  {{- $keywords := .Params.keywords -}}{{ if not .Params.keywords }}{{ $keywords = .Site.Params.keywords }}{{ end }}
+  {{- $image := .Params.Image -}}{{ if not .Params.Image }}{{ $image = .Site.Params.image }}{{ end }}
+
+  {{ "<!-- Document Metadata -->" | safeHTML -}}
+  {{ with $author }}<meta name="author" content="{{ . }}">{{ end }}
+  {{ with $description }}<meta name="description" content="{{ . }}">{{ end }}
+  {{ with $keywords }}<meta name="keywords" content="{{ . }}">{{ end }}
+  <link type="text/plain" rel="author" href="{{ "humans.txt" | absURL }}" />
+
+  {{ "<!-- OpenGraph Metadata -->" | safeHTML }}
+  {{ with $title }}<meta property="og:title" content="{{ . }}" />{{ end }}
+  {{ with $description }}<meta property="og:description" content="{{ . }}"  />{{ end }}
+  {{ with $image }}<meta property="og:image" content="{{ . | absURL }}" />{{ end }}
+  {{ if $title }}<meta property="og:url" content="{{ .Permalink }}" />{{ end }}
+  {{ if $title }}<meta property="og:type" content="website" />{{ end }}
+
+  {{ "<!-- Twitter Metadata -->" | safeHTML }}
+  {{ with $title }}<meta name="twitter:title" content="{{ . }}" />{{ end }}
+  {{ if $title }}<meta name="twitter:card" content="summary">{{ end }}
+  {{ with $description }}<meta name="twitter:description" content="{{ . }}" />{{ end }}
+  {{ with $image }}<meta name="twitter:image" content="{{ . | absURL }}" />{{ end }}
+
+  {{ "<!-- Favicon and Iconography -->" | safeHTML }}
+  <link rel="shortcut icon" href="{{ `img/favicon.png` | absURL }}" type="image/x-icon">
+  <link rel="icon" href="{{ `img/favicon.png` | absURL }}" type="image/x-icon">
+
+  {{ "<!-- RSS Feeds -->" | safeHTML }}
+  <link rel="alternate" type="application/rss+xml" href="{{.Site.BaseURL }}/index.xml" title="{{ .Site.Title }} RSS Feed">
+
+  {{ "<!-- Fonts -->" | safeHTML }}
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.0/css/all.css">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.12.0/css/v4-shims.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/hack-font@3.3.0/build/web/hack.min.css">
+  <link href='//rsms.me/inter/inter.css' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,700italic,400,300,600,700&subset=latin-ext,latin' rel='stylesheet' type='text/css'>
+
+
+  {{"<!-- Main Stylesheet -->"|safeHTML}}
+  <link href="{{ `css/bootstrap-custom.min.css` | absURL }}" rel="stylesheet">
+  <link href="{{ `css/base.min.css` | absURL }}" rel="stylesheet">
+  <link href="{{ `css/cinder.min.css` | absURL }}" rel="stylesheet">
+
+  {{- if .Site.Params.highlightjs.colorscheme }}
+  <link href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.18.0/build/styles/{{ .Site.Params.highlightjs.colorscheme }}.min.css" rel="stylesheet">
+  {{- else }}
+  <link href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@9.18.0/build/styles/github.min.css" rel="stylesheet">
+  {{- end -}}
+
+  {{- if .Site.Params.googleAnalytics }}
+  {{ "<!-- Google Analytics -->" | safeHTML }}
+  <script src="https://www.googletagmanager.com/gtag/js?id={{ .Site.Params.googleAnalytics }}" defer></script>
+  <script type="module">
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', '{{ .Site.Params.googleAnalytics }}');
+  </script>
+  {{- end -}}

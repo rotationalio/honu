@@ -25,4 +25,8 @@ BenchmarkSerialization/Small/Decode/Honu-10         	  343032	      3421 ns/op	 
 BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	    8367 B/op	     127 allocs/op
 ```
 
-![Benchmarks](./docs/serialization-benchmark.png)
+![Benchmarks](./docs/static/img/serialization-benchmark.png)
+
+## Documentation
+
+The docs are set up using the [Cinder](https://sourcefoundry.org/cinder/) MkDocs theme, ported (somewhat) into Hugo using the [Cinder GitHub repository](https://github.com/chrissimpkins/cinder). A lot of work still needs to be done to get these docs ready for prime time, but it serves as a quick placeholder while we're working on the database.

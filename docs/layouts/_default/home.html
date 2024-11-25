@@ -1,0 +1,14 @@
+{{ define "main" }}
+  <style>
+    img {
+      margin: 128px 0;
+    }
+  </style>
+
+  <div class="col-md-12 text-center" role="main">
+    {{ range .Pages }}
+      <h2>{{ .Title }}</h2>
+      {{ .Content }}
+    {{ end }}
+  </div>
+{{ end }}
