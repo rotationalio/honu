@@ -8,6 +8,8 @@ params:
   image: img/logo.png
   googleAnalytics: "" # Google Analytics ID (set $HUGO_PARAMS_GOOGLEANALYTICS)
 
+  repositoryURL: https://github.com/rotationalio/honu
+
   highlightjs:
     colorscheme: null
     languages: []
