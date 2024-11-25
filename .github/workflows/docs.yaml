@@ -1,0 +1,40 @@
+name: Publish Docs
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    name: Hugo
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}/go
+    defaults:
+      run:
+        working-directory: ${{ env.GOPATH }}/src/github.com/rotationalio/honu/docs
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.139.2'
+          extended: false
+
+      - name: Build
+        run: hugo --gc --minify --templateMetrics --templateMetricsHints --buildDrafts --buildExpired --buildFuture --forceSyncStatic
+
+      - name: Publish
+        if: github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ${{ env.GOPATH }}/src/github.com/rotationalio/honu/docs/public
+          cname: honudb.dev
