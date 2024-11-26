@@ -31,7 +31,7 @@ func (s *Server) Status(w http.ResponseWriter, r *http.Request, _ httprouter.Par
 	}
 	s.RUnlock()
 
-	render.JSON(http.StatusOK, w, &api.StatusReply{
+	render.Negotiate(r).Render(http.StatusOK, w, &api.StatusReply{
 		Status:  state,
 		Version: pkg.Version(),
 		Uptime:  time.Since(s.started).String(),
