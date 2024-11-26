@@ -1,21 +1,26 @@
 package render
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/rotationalio/honu/pkg/mime"
+	"github.com/tinylib/msgp/msgp"
 )
 
-// Header keys for http responses
+// Header keys for http requests and responses
 const (
+	Accept      = "Accept"
 	ContentType = "Content-Type"
 )
 
-// Content types for plain text responses
-const (
-	plainContentType = "text/plain; charset=utf-8"
+// Content type values
+var (
+	plainContentType   = mime.TEXT.ContentType()
+	msgpackContentType = mime.MSGPACK.ContentType()
+	jsonContentType    = mime.JSON.ContentType()
 )
-
-type Renderer func(code int, w http.ResponseWriter, obj any) error
 
 func Text(code int, w http.ResponseWriter, text string) error {
 	w.Header().Set(ContentType, plainContentType)
@@ -30,5 +35,32 @@ func Textf(code int, w http.ResponseWriter, text string, a ...any) error {
 	w.WriteHeader(code)
 
 	fmt.Fprintf(w, text, a...)
+	return nil
+}
+
+// MsgPack marshals the given interface object to the binary MessagePack representation
+// and writes it to the response with the correct ContentType
+func MsgPack(code int, w http.ResponseWriter, obj msgp.Encodable) error {
+	w.Header().Set(ContentType, msgpackContentType)
+	w.WriteHeader(code)
+
+	// Create a buffered encodable stream to prevent additional allocations.
+	wm := msgp.NewWriter(w)
+	if err := obj.EncodeMsg(wm); err != nil {
+		return err
+	}
+
+	// Ensure the message is flushed to the underlying writer
+	return wm.Flush()
+}
+
+// JSON marshals the given interface object and writes it with the correct ContentType.
+func JSON(code int, w http.ResponseWriter, obj any) error {
+	w.Header().Set(ContentType, jsonContentType)
+	w.WriteHeader(code)
+
+	if err := json.NewEncoder(w).Encode(obj); err != nil {
+		return err
+	}
 	return nil
 }

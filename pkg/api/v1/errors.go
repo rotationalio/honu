@@ -12,9 +12,10 @@ import (
 //===========================================================================
 
 var (
-	Unsuccessful = Reply{Success: false}
-	NotFound     = Reply{Success: false, Error: "resource not found"}
-	NotAllowed   = Reply{Success: false, Error: "method not allowed"}
+	Unsuccessful  = Reply{Success: false}
+	NotFound      = Reply{Success: false, Error: "resource not found"}
+	NotAllowed    = Reply{Success: false, Error: "method not allowed"}
+	NotAcceptable = Reply{Success: false, Error: "content type in accept header not available"}
 )
 
 // Construct a new response for an error or simply return unsuccessful.
@@ -82,17 +83,6 @@ func ErrorStatus(err error) int {
 	} else {
 		return e.StatusCode
 	}
-}
-
-//===========================================================================
-// Detail Error
-//===========================================================================
-
-type ErrorDetail []*DetailError
-
-type DetailError struct {
-	Field string `json:"field"`
-	Error string `json:"error"`
 }
 
 //===========================================================================
