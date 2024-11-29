@@ -1,4 +1,4 @@
-package store_test
+package lani_test
 
 import (
 	"crypto/rand"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	. "github.com/rotationalio/honu/pkg/store"
+	. "github.com/rotationalio/honu/pkg/store/lani"
 	"github.com/stretchr/testify/require"
 )
 
@@ -396,7 +396,7 @@ func TestEncoder(t *testing.T) {
 
 	t.Run("Struct", func(t *testing.T) {
 		t.Run("Nil", func(t *testing.T) {
-			var obj *Compression
+			var obj *Mock
 			enc := &Encoder{}
 			n, err := enc.EncodeStruct(obj)
 			require.NoError(t, err, "could not encode nil struct")

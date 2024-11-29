@@ -30,3 +30,25 @@ BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	 
 ## Documentation
 
 The docs are set up using the [Cinder](https://sourcefoundry.org/cinder/) MkDocs theme, ported (somewhat) into Hugo using the [Cinder GitHub repository](https://github.com/chrissimpkins/cinder). A lot of work still needs to be done to get these docs ready for prime time, but it serves as a quick placeholder while we're working on the database.
+
+
+## TEMPORARY SCRATCH SPACE
+
+Before refactor:
+
+```
+goos: darwin
+goarch: arm64
+pkg: github.com/rotationalio/honu/pkg/store/object
+cpu: Apple M1 Max
+BenchmarkSerialization/Small/Encode-10  	  645108	      1626 ns/op	      3292 bytes	    4421 B/op	       2 allocs/op
+BenchmarkSerialization/Small/Decode-10  	  423475	      2824 ns/op	    4906 B/op	      62 allocs/op
+BenchmarkSerialization/Medium/Encode-10 	  339535	      3586 ns/op	     24003 bytes	   28953 B/op	       2 allocs/op
+BenchmarkSerialization/Medium/Decode-10 	  221631	      4822 ns/op	   29150 B/op	      60 allocs/op
+BenchmarkSerialization/Large/Encode-10  	   84943	     13123 ns/op	    179931 bytes	  201151 B/op	       2 allocs/op
+BenchmarkSerialization/Large/Decode-10  	   84324	     14728 ns/op	  201911 B/op	      62 allocs/op
+BenchmarkSerialization/XLarge/Encode-10 	    6607	    155824 ns/op	   2446547 bytes	 3285065 B/op	       2 allocs/op
+BenchmarkSerialization/XLarge/Decode-10 	    9144	    164422 ns/op	 3285671 B/op	      61 allocs/op
+PASS
+ok  	github.com/rotationalio/honu/pkg/store/object	88.466s
+```

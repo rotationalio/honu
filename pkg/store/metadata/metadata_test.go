@@ -1,4 +1,4 @@
-package store_test
+package metadata_test
 
 import (
 	"crypto/rand"
@@ -9,20 +9,21 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	"github.com/rotationalio/honu/pkg/store"
+	"github.com/rotationalio/honu/pkg/store/lani"
+	. "github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/stretchr/testify/require"
 )
 
-func TestObjectSerialization(t *testing.T) {
-	obj := generateRandomObject(Small)
-	data, err := store.Marshal(obj)
-	require.NoError(t, err, "could not marshal object")
-	require.Greater(t, len(data), 512, "expected object to be greater than the minimum data size")
+func TestMetadataSerialization(t *testing.T) {
+	obj, _ := generateRandomObject(Small)
+	data, err := lani.Marshal(obj)
+	require.NoError(t, err, "could not marshal metdata")
+	require.Greater(t, len(data), 512, "expected metdata to be greater than the minimum data size")
 
-	cmp := &store.Object{}
-	err = store.Unmarshal(data, cmp)
-	require.NoError(t, err, "could not unmarshal object")
-	require.Equal(t, obj, cmp, "deserialized object does not match original")
+	cmp := &Metadata{}
+	err = lani.Unmarshal(data, cmp)
+	require.NoError(t, err, "could not unmarshal metdata")
+	require.Equal(t, obj, cmp, "deserialized metdata does not match original")
 }
 
 //===========================================================================
@@ -40,14 +41,14 @@ const (
 
 func BenchmarkSerialization(b *testing.B) {
 
-	makeHonuEncode := func(objs []*store.Object) func(b *testing.B) {
+	makeHonuEncode := func(objs []*Metadata) func(b *testing.B) {
 		return func(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
 				obj := objs[n%len(objs)]
 
 				b.StartTimer()
-				data, err := store.Marshal(obj)
+				data, err := lani.Marshal(obj)
 				b.StopTimer()
 
 				if err != nil {
@@ -64,10 +65,10 @@ func BenchmarkSerialization(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
 				data := hnd[n%len(hnd)]
-				obj := &store.Object{}
+				obj := &Metadata{}
 
 				b.StartTimer()
-				err := store.Unmarshal(data, obj)
+				err := lani.Unmarshal(data, obj)
 				b.StopTimer()
 
 				if err != nil {
@@ -81,16 +82,16 @@ func BenchmarkSerialization(b *testing.B) {
 	makeSizeBenchmark := func(size Size) func(b *testing.B) {
 		return func(b *testing.B) {
 			// Generate objects for testing
-			objs := make([]*store.Object, 256)
+			objs := make([]*Metadata, 256)
 			for i := range objs {
-				objs[i] = generateRandomObject(size)
+				objs[i], _ = generateRandomObject(size)
 			}
 
 			b.Run("Encode", makeHonuEncode(objs))
 
 			hnd := make([][]byte, len(objs))
 			for i, obj := range objs {
-				data, err := store.Marshal(obj)
+				data, err := lani.Marshal(obj)
 				if err != nil {
 					b.FailNow()
 				}
@@ -111,8 +112,8 @@ func BenchmarkSerialization(b *testing.B) {
 // Generate Random Objects
 //===========================================================================
 
-func generateRandomObject(size Size) *store.Object {
-	obj := &store.Object{
+func generateRandomObject(size Size) (*Metadata, []byte) {
+	obj := &Metadata{
 		Version:      randVersion(false),
 		Schema:       randSchema(),
 		MIME:         "application/random",
@@ -129,21 +130,21 @@ func generateRandomObject(size Size) *store.Object {
 		Modified:     randTime(),
 	}
 
-	obj.Data = make([]byte, nRandomBytes(size))
-	if _, err := rand.Read(obj.Data); err != nil {
+	data := make([]byte, nRandomBytes(size))
+	if _, err := rand.Read(data); err != nil {
 		panic(err)
 	}
 
-	return obj
+	return obj, data
 }
 
-func randVersion(isParent bool) *store.Version {
+func randVersion(isParent bool) *Version {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	vers := &store.Version{
+	vers := &Version{
 		PID:       mrand.Uint64(),
 		Version:   mrand.Uint64(),
 		Region:    randRegion(),
@@ -158,13 +159,13 @@ func randVersion(isParent bool) *store.Version {
 	return vers
 }
 
-func randSchema() *store.SchemaVersion {
+func randSchema() *SchemaVersion {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	schema := &store.SchemaVersion{
+	schema := &SchemaVersion{
 		Name:  "RandomSchema",
 		Major: mrand.Uint32(),
 		Minor: mrand.Uint32(),
@@ -174,15 +175,15 @@ func randSchema() *store.SchemaVersion {
 	return schema
 }
 
-func randACL() []*store.AccessControl {
+func randACL() []*AccessControl {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	acl := make([]*store.AccessControl, mrand.Intn(64)+1)
+	acl := make([]*AccessControl, mrand.Intn(64)+1)
 	for i := range acl {
-		acl[i] = &store.AccessControl{
+		acl[i] = &AccessControl{
 			ClientID:    ulid.MustNew(ulid.Now(), rand.Reader),
 			Permissions: randUint8(),
 		}
@@ -251,13 +252,13 @@ func randRegion() string {
 	return regions[mrand.Intn(len(regions))]
 }
 
-func randPublisher() *store.Publisher {
+func randPublisher() *Publisher {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	return &store.Publisher{
+	return &Publisher{
 		PublisherID: ulid.MustNew(ulid.Now(), rand.Reader),
 		ClientID:    ulid.MustNew(ulid.Now(), rand.Reader),
 		IPAddress:   net.IPv4(randUint8(), randUint8(), randUint8(), randUint8()),
@@ -265,26 +266,26 @@ func randPublisher() *store.Publisher {
 	}
 }
 
-func randEncryption() *store.Encryption {
+func randEncryption() *Encryption {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	algs := []store.EncryptionAlgorithm{
-		store.Plaintext, store.AES128_GCM, store.AES192_GCM, store.AES256_GCM,
+	algs := []EncryptionAlgorithm{
+		Plaintext, AES128_GCM, AES192_GCM, AES256_GCM,
 	}
 
-	enc := &store.Encryption{
+	enc := &Encryption{
 		EncryptionAlgorithm: algs[mrand.Intn(len(algs))],
 	}
 
-	if enc.EncryptionAlgorithm == store.Plaintext {
+	if enc.EncryptionAlgorithm == Plaintext {
 		return enc
 	}
 
-	enc.SealingAlgorithm = store.RSA_OEAP_SHA512
-	enc.SignatureAlgorithm = store.HMAC_SHA256
+	enc.SealingAlgorithm = RSA_OEAP_SHA512
+	enc.SignatureAlgorithm = HMAC_SHA256
 	enc.PublicKeyID = base64.RawStdEncoding.EncodeToString(randBytes(16))
 	enc.EncryptionKey = randBytes(32)
 	enc.HMACSecret = randBytes(32)
@@ -293,21 +294,21 @@ func randEncryption() *store.Encryption {
 	return enc
 }
 
-func randCompression() *store.Compression {
+func randCompression() *Compression {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	algs := []store.CompressionAlgorithm{
-		store.None, store.GZIP, store.COMPRESS, store.DEFLATE, store.BROTLI,
+	algs := []CompressionAlgorithm{
+		None, GZIP, COMPRESS, DEFLATE, BROTLI,
 	}
 
-	cmp := &store.Compression{
+	cmp := &Compression{
 		Algorithm: algs[mrand.Intn(len(algs))],
 	}
 
-	if cmp.Algorithm == store.GZIP || cmp.Algorithm == store.COMPRESS {
+	if cmp.Algorithm == GZIP || cmp.Algorithm == COMPRESS {
 		cmp.Level = mrand.Int63n(9) + 1
 	}
 

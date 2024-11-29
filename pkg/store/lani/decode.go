@@ -1,4 +1,4 @@
-package store
+package lani
 
 import (
 	"encoding/binary"
@@ -7,17 +7,6 @@ import (
 
 	"github.com/oklog/ulid/v2"
 )
-
-// Unmarshal a decodable object from a byte slice for deserialization.
-func Unmarshal(data []byte, v Decodable) (err error) {
-	decoder := NewDecoder(data)
-	return v.Decode(decoder)
-}
-
-// All objects in this package must be decodable.
-type Decodable interface {
-	Decode(*Decoder) error
-}
 
 // Decoder is similar to a bytes.Reader, allowing a sequential decoding of byte frames,
 // so that every repeated decoding advances the internal index to the next frame.
