@@ -12,12 +12,12 @@ import (
 //===========================================================================
 
 type Version struct {
-	PID       uint64
-	Version   uint64
-	Region    string
-	Parent    *Version
-	Tombstone bool
-	Created   time.Time
+	PID       uint64    `json:"pid" msg:"pid"`
+	Version   uint64    `json:"version" msg:"version"`
+	Region    string    `json:"region" msg:"region"`
+	Parent    *Version  `json:"parent,omitempty" msg:"parent,omitempty"`
+	Tombstone bool      `json:"tombstone,omitempty" msg:"tombstone,omitempty"`
+	Created   time.Time `json:"created" msg:"created"`
 }
 
 var _ lani.Encodable = &Version{}

@@ -11,10 +11,10 @@ import (
 //===========================================================================
 
 type SchemaVersion struct {
-	Name  string
-	Major uint32
-	Minor uint32
-	Patch uint32
+	Name  string `json:"name" msg:"name"`
+	Major uint32 `json:"major" msg:"major"`
+	Minor uint32 `json:"minor" msg:"minor"`
+	Patch uint32 `json:"patch" msg:"patch"`
 }
 
 var _ lani.Encodable = &SchemaVersion{}

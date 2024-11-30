@@ -6,12 +6,12 @@ import (
 )
 
 //===========================================================================
-// ACL
+// Access Control List
 //===========================================================================
 
 type AccessControl struct {
-	ClientID    ulid.ULID
-	Permissions uint8
+	ClientID    ulid.ULID `json:"client_id" msg:"client_id"`
+	Permissions uint8     `json:"permissions" msg:"permissions"`
 }
 
 var _ lani.Encodable = &AccessControl{}

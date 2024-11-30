@@ -13,10 +13,10 @@ import (
 //===========================================================================
 
 type Publisher struct {
-	PublisherID ulid.ULID
-	ClientID    ulid.ULID
-	IPAddress   net.IP
-	UserAgent   string
+	PublisherID ulid.ULID `json:"publisher_id" msg:"publisher_id"`
+	ClientID    ulid.ULID `json:"client_id" msg:"client_id"`
+	IPAddress   net.IP    `json:"ipaddr" msg:"ipaddr"`
+	UserAgent   string    `json:"user_agent,omitempty" msg:"user_agent,omitempty"`
 }
 
 var _ lani.Encodable = &Publisher{}

@@ -2,6 +2,9 @@ package metadata
 
 import (
 	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -13,20 +16,20 @@ import (
 //===========================================================================
 
 type Metadata struct {
-	Version      *Version
-	Schema       *SchemaVersion
-	MIME         string
-	Owner        ulid.ULID
-	Group        ulid.ULID
-	Permissions  uint8
-	ACL          []*AccessControl
-	WriteRegions []string
-	Publisher    *Publisher
-	Encryption   *Encryption
-	Compression  *Compression
-	Flags        uint8
-	Created      time.Time
-	Modified     time.Time
+	Version      *Version         `json:"version" msg:"version"`
+	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
+	MIME         string           `json:"mime" msg:"mime"`
+	Owner        ulid.ULID        `json:"owner" msg:"owner"`
+	Group        ulid.ULID        `json:"group" msg:"group"`
+	Permissions  uint8            `json:"permissions" msg:"permissions"`
+	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
+	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
+	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
+	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
+	Compression  *Compression     `json:"compression,omitempty" msg:"compression,omitempty"`
+	Flags        uint8            `json:"flags" msg:"flags"`
+	Created      time.Time        `json:"created" msg:"created"`
+	Modified     time.Time        `json:"modified" msg:"modified"`
 }
 
 var _ lani.Encodable = &Metadata{}
@@ -280,13 +283,13 @@ const (
 )
 
 type Encryption struct {
-	PublicKeyID         string
-	EncryptionKey       []byte
-	HMACSecret          []byte
-	Signature           []byte
-	SealingAlgorithm    EncryptionAlgorithm
-	EncryptionAlgorithm EncryptionAlgorithm
-	SignatureAlgorithm  EncryptionAlgorithm
+	PublicKeyID         string              `json:"public_key_id,omitempty" msg:"public_key_id,omitempty"`
+	EncryptionKey       []byte              `json:"encryption_key,omitempty" msg:"encryption_key,omitempty"`
+	HMACSecret          []byte              `json:"hmac_secret,omitempty" msg:"hmac_secret,omitempty"`
+	Signature           []byte              `json:"signature,omitempty" msg:"signature,omitempty"`
+	SealingAlgorithm    EncryptionAlgorithm `json:"sealing_algorithm,omitempty" msg:"sealing_algorithm,omitempty"`
+	EncryptionAlgorithm EncryptionAlgorithm `json:"encryption_algoirthm" msg:"encryption_algorithm"`
+	SignatureAlgorithm  EncryptionAlgorithm `json:"signature_algorithm,omitempty" msg:"signature_algorithm,omitempty"`
 }
 
 var _ lani.Encodable = &Encryption{}
@@ -378,6 +381,60 @@ func (o *Encryption) Decode(d *lani.Decoder) (err error) {
 	return nil
 }
 
+func ParseEncryptionAlgorithm(s string) (EncryptionAlgorithm, error) {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	switch s {
+	case "PLAINTEXT":
+		return Plaintext, nil
+	case "AES256_GCM":
+		return AES256_GCM, nil
+	case "AES192_GCM":
+		return AES192_GCM, nil
+	case "AES128_GCM":
+		return AES128_GCM, nil
+	case "HMAC_SHA256":
+		return HMAC_SHA256, nil
+	case "RSA_OEAP_SHA512":
+		return RSA_OEAP_SHA512, nil
+	default:
+		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
+	}
+}
+
+func (o EncryptionAlgorithm) String() string {
+	switch o {
+	case Plaintext:
+		return "PLAINTEXT"
+	case AES256_GCM:
+		return "AES256_GCM"
+	case AES192_GCM:
+		return "AES192_GCM"
+	case AES128_GCM:
+		return "AES128_GCM"
+	case HMAC_SHA256:
+		return "HMAC_SHA256"
+	case RSA_OEAP_SHA512:
+		return "RSA_OEAP_SHA512"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (o *EncryptionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *EncryptionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+	var alg string
+	if err := json.Unmarshal(data, &alg); err != nil {
+		return err
+	}
+	if *o, err = ParseEncryptionAlgorithm(alg); err != nil {
+		return err
+	}
+	return nil
+}
+
 //===========================================================================
 // Compression
 //===========================================================================
@@ -393,8 +450,8 @@ const (
 )
 
 type Compression struct {
-	Algorithm CompressionAlgorithm
-	Level     int64
+	Algorithm CompressionAlgorithm `json:"algorithm" msg:"algorithm"`
+	Level     int64                `json:"level,omitempty" msg:"level,omitempty"`
 }
 
 var _ lani.Encodable = &Compression{}
@@ -430,5 +487,55 @@ func (o *Compression) Decode(d *lani.Decoder) (err error) {
 		return err
 	}
 
+	return nil
+}
+
+func ParseCompressionAlgorithm(s string) (CompressionAlgorithm, error) {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	switch s {
+	case "NONE":
+		return None, nil
+	case "GZIP":
+		return GZIP, nil
+	case "COMPRESS":
+		return COMPRESS, nil
+	case "DEFLATE":
+		return DEFLATE, nil
+	case "BROTLI":
+		return BROTLI, nil
+	default:
+		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
+	}
+}
+
+func (o CompressionAlgorithm) String() string {
+	switch o {
+	case None:
+		return "NONE"
+	case GZIP:
+		return "GZIP"
+	case COMPRESS:
+		return "COMPRESS"
+	case DEFLATE:
+		return "DEFLATE"
+	case BROTLI:
+		return "BROTLI"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (o *CompressionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *CompressionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+	var alg string
+	if err := json.Unmarshal(data, &alg); err != nil {
+		return err
+	}
+	if *o, err = ParseCompressionAlgorithm(alg); err != nil {
+		return err
+	}
 	return nil
 }
