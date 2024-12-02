@@ -4,5 +4,5 @@ import "errors"
 
 var (
 	ErrBadVersion = errors.New("object is malformed: cannot decode specified version")
-	ErrNoMetadata = errors.New("object is malformed: no associated metadata")
+	ErrMalformed  = errors.New("object is malformed: cannot parse data or metadata")
 )

@@ -13,30 +13,30 @@ import (
 const StorageVersion uint8 = 1
 
 // An object is the serial data that's written to the underlying storage and is composed
-// of a one byte version indicator, metadata, and the document data serialized in a
-// format that can be easily unmarshaled and marshed without requiring copying of data
-// into multiple byte slices.
+// of a one byte version indicator, the length of the document data, the document data,
+// and the metadata serialized in a format that can be easily unmarshaled and marshed
+// without requiring copying of data into multiple byte slices.
 type Object []byte
 
 // Create an object for storage by writing the metadata and the data into a new byte
 // slice ready for storage on disk.
-func Marshal(meta *metadata.Metadata, data []byte) (Object, error) {
+func Marshal(meta *metadata.Metadata, data []byte) (_ Object, err error) {
 	// Create an encoder of the correct size that requires no allocations.
 	encoder := lani.Encoder{}
-	encoder.Grow(1 + meta.Size() + len(data))
+	encoder.Grow(1 + binary.MaxVarintLen64 + meta.Size() + len(data))
 
 	// Write the storage version to the encoder
-	if _, err := encoder.EncodeUint8(StorageVersion); err != nil {
+	if _, err = encoder.EncodeUint8(StorageVersion); err != nil {
 		return nil, err
 	}
 
-	// Write the metadata to the encoder
-	if _, err := encoder.EncodeStruct(meta); err != nil {
+	// Write the bytes to the encoder
+	if _, err = encoder.Encode(data); err != nil {
 		return nil, err
 	}
 
-	// Write the fixed bytes to the encoder
-	if _, err := encoder.EncodeFixed(data); err != nil {
+	// Append the metadata to the encoder
+	if _, err = encoder.EncodeStruct(meta); err != nil {
 		return nil, err
 	}
 
@@ -55,13 +55,13 @@ func (o Object) Metadata() (*metadata.Metadata, error) {
 		return nil, ErrBadVersion
 	}
 
-	i := o.metadataLength()
-	if i < 1 {
-		return nil, ErrNoMetadata
+	d, b := o.dataLength()
+	if d < 1 {
+		return nil, ErrMalformed
 	}
 
 	meta := &metadata.Metadata{}
-	decoder := lani.NewDecoder(o[1 : i+1])
+	decoder := lani.NewDecoder(o[1+d+b:])
 	if _, err := decoder.DecodeStruct(meta); err != nil {
 		return nil, err
 	}
@@ -74,17 +74,17 @@ func (o Object) Data() ([]byte, error) {
 		return nil, ErrBadVersion
 	}
 
-	i := o.metadataLength()
-	if i < 1 {
-		return nil, ErrNoMetadata
+	d, b := o.dataLength()
+	if d < 1 {
+		return nil, ErrMalformed
 	}
 
-	return o[i+1:], nil
+	return o[1+b : 1+b+d], nil
 }
 
-func (o Object) metadataLength() int {
+func (o Object) dataLength() (int, int) {
 	if len(o) == 0 {
-		return -1
+		return -1, -1
 	}
 
 	j := 1 + binary.MaxVarintLen64
@@ -94,8 +94,8 @@ func (o Object) metadataLength() int {
 
 	rl, k := binary.Uvarint(o[1:j])
 	if k <= 0 {
-		return -1
+		return -1, -1
 	}
 
-	return int(rl) + k
+	return int(rl), k
 }

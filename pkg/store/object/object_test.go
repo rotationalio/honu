@@ -3,15 +3,51 @@ package object_test
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	mrand "math/rand"
 	"net"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/oklog/ulid/v2"
 	"github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/rotationalio/honu/pkg/store/object"
+	"github.com/stretchr/testify/require"
 )
+
+func TestObject(t *testing.T) {
+	meta, data := loadFixture(t)
+
+	obj, err := object.Marshal(meta, data)
+	require.NoError(t, err, "could not marshal object")
+
+	require.Len(t, obj, 1271, "unexpected length of encoded object")
+	require.Equal(t, object.StorageVersion, obj.StorageVersion())
+
+	ometa, err := obj.Metadata()
+	require.NoError(t, err, "could not decode metadata")
+	require.Equal(t, meta, ometa, "metadata not correctly serialized")
+
+	odata, err := obj.Data()
+	require.NoError(t, err, "could not decode data")
+	require.Equal(t, data, odata, "data not correctly serialized")
+}
+
+func loadFixture(t *testing.T) (*metadata.Metadata, []byte) {
+	var meta *metadata.Metadata
+	f, err := os.Open("testdata/metadata.json")
+	require.NoError(t, err, "could not open testdata/metadata.json")
+	defer f.Close()
+
+	err = json.NewDecoder(f).Decode(&meta)
+	require.NoError(t, err, "could not decode metadata")
+
+	data, err := os.ReadFile("testdata/data.json")
+	require.NoError(t, err, "could not read testdata/data.json")
+
+	return meta, data
+}
 
 //===========================================================================
 // Benchmarks
@@ -57,10 +93,11 @@ func BenchmarkSerialization(b *testing.B) {
 				b.StartTimer()
 				obj := object.Object(data)
 				_, err := obj.Metadata()
+				_, err2 := obj.Data()
 
 				b.StopTimer()
 
-				if err != nil {
+				if err != nil || err2 != nil {
 					b.FailNow()
 				}
 			}
