@@ -17,12 +17,16 @@ Protocol Buffers are a compact, cross-language compatible data serialization for
 ```
 goos: darwin
 goarch: arm64
-pkg: github.com/rotationalio/honu/pkg/store
+pkg: github.com/rotationalio/honu/pkg/store/object
 cpu: Apple M1 Max
-BenchmarkSerialization/Small/Encode/Honu-10         	  653840	      1905 ns/op	      1471 bytes	    4319 B/op	       2 allocs/op
-BenchmarkSerialization/Small/Encode/Protobuf-10     	  346150	      3164 ns/op	      2426 bytes	    4044 B/op	       1 allocs/op
-BenchmarkSerialization/Small/Decode/Honu-10         	  343032	      3421 ns/op	    4784 B/op	      62 allocs/op
-BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	    8367 B/op	     127 allocs/op
+BenchmarkSerialization/Small/Encode-10  	  578818	      1768 ns/op	      4520 bytes	    4487 B/op	       2 allocs/op
+BenchmarkSerialization/Small/Decode-10  	  402945	      2686 ns/op	    2341 B/op	      62 allocs/op
+BenchmarkSerialization/Medium/Encode-10 	  363483	      3308 ns/op	     10128 bytes	   28081 B/op	       2 allocs/op
+BenchmarkSerialization/Medium/Decode-10 	  471076	      2562 ns/op	    2322 B/op	      61 allocs/op
+BenchmarkSerialization/Large/Encode-10  	   93942	     12124 ns/op	    303630 bytes	  207933 B/op	       2 allocs/op
+BenchmarkSerialization/Large/Decode-10  	  467475	      2736 ns/op	    2334 B/op	      62 allocs/op
+BenchmarkSerialization/XLarge/Encode-10 	    7250	    138013 ns/op	   4926099 bytes	 3247592 B/op	       2 allocs/op
+BenchmarkSerialization/XLarge/Decode-10 	  407468	      2749 ns/op	    2333 B/op	      62 allocs/op
 ```
 
 ![Benchmarks](./docs/static/img/serialization-benchmark.png)

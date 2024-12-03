@@ -1,36 +1,41 @@
-package store
+package metadata
 
 import (
 	"encoding/binary"
-	"net"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/oklog/ulid/v2"
+	"github.com/rotationalio/honu/pkg/store/lani"
 )
 
 //===========================================================================
-// Object Storage
+// Metadata Storage
 //===========================================================================
 
-type Object struct {
-	Version      *Version
-	Schema       *SchemaVersion
-	MIME         string
-	Owner        ulid.ULID
-	Group        ulid.ULID
-	Permissions  uint8
-	ACL          []*AccessControl
-	WriteRegions []string
-	Publisher    *Publisher
-	Encryption   *Encryption
-	Compression  *Compression
-	Flags        uint8
-	Created      time.Time
-	Modified     time.Time
-	Data         []byte
+type Metadata struct {
+	Version      *Version         `json:"version" msg:"version"`
+	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
+	MIME         string           `json:"mime" msg:"mime"`
+	Owner        ulid.ULID        `json:"owner" msg:"owner"`
+	Group        ulid.ULID        `json:"group" msg:"group"`
+	Permissions  uint8            `json:"permissions" msg:"permissions"`
+	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
+	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
+	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
+	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
+	Compression  *Compression     `json:"compression,omitempty" msg:"compression,omitempty"`
+	Flags        uint8            `json:"flags" msg:"flags"`
+	Created      time.Time        `json:"created" msg:"created"`
+	Modified     time.Time        `json:"modified" msg:"modified"`
 }
 
-func (o *Object) Size() (s int) {
+var _ lani.Encodable = &Metadata{}
+var _ lani.Decodable = &Metadata{}
+
+func (o *Metadata) Size() (s int) {
 	// Version size + not nil bool
 	s += 1
 	if o.Version != nil {
@@ -81,11 +86,10 @@ func (o *Object) Size() (s int) {
 
 	s += 1                         // Flags
 	s += 2 * binary.MaxVarintLen64 // Created, Modified
-	s += len(o.Data) + binary.MaxVarintLen64
 	return
 }
 
-func (o *Object) Encode(e *Encoder) (n int, err error) {
+func (o *Metadata) Encode(e *lani.Encoder) (n int, err error) {
 	var m int
 	if m, err = e.EncodeStruct(o.Version); err != nil {
 		return n + m, err
@@ -166,15 +170,10 @@ func (o *Object) Encode(e *Encoder) (n int, err error) {
 	}
 	n += m
 
-	if m, err = e.Encode(o.Data); err != nil {
-		return n + m, err
-	}
-	n += m
-
 	return
 }
 
-func (o *Object) Decode(d *Decoder) (err error) {
+func (o *Metadata) Decode(d *lani.Decoder) (err error) {
 	// Setup nested structs
 	o.Version = &Version{}
 	o.Schema = &SchemaVersion{}
@@ -265,278 +264,6 @@ func (o *Object) Decode(d *Decoder) (err error) {
 		return err
 	}
 
-	if o.Data, err = d.Decode(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//===========================================================================
-// Object Version
-//===========================================================================
-
-type Version struct {
-	PID       uint64
-	Version   uint64
-	Region    string
-	Parent    *Version
-	Tombstone bool
-	Created   time.Time
-}
-
-func (o *Version) Size() (s int) {
-	s += 2 * binary.MaxVarintLen64
-	s += len([]byte(o.Region)) + binary.MaxVarintLen64
-
-	if o.Parent != nil {
-		s += o.Parent.Size() + 1 // Add 1 for the not nil bool
-	} else {
-		s += 1 // Add 1 for the nil bool
-	}
-
-	s += 1                     // Tombstone bool
-	s += binary.MaxVarintLen64 // Timestamp int64
-
-	return
-}
-
-func (o *Version) Encode(e *Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeUint64(o.PID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint64(o.Version); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeString(o.Region); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeStruct(o.Parent); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeBool(o.Tombstone); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeTime(o.Created); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *Version) Decode(d *Decoder) (err error) {
-	if o.PID, err = d.DecodeUint64(); err != nil {
-		return err
-	}
-
-	if o.Version, err = d.DecodeUint64(); err != nil {
-		return err
-	}
-
-	if o.Region, err = d.DecodeString(); err != nil {
-		return err
-	}
-
-	var isNil bool
-	o.Parent = &Version{}
-
-	if isNil, err = d.DecodeStruct(o.Parent); err != nil {
-		return err
-	}
-
-	if isNil {
-		o.Parent = nil
-	}
-
-	if o.Tombstone, err = d.DecodeBool(); err != nil {
-		return err
-	}
-
-	if o.Created, err = d.DecodeTime(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//===========================================================================
-// Schema Version
-//===========================================================================
-
-type SchemaVersion struct {
-	Name  string
-	Major uint32
-	Minor uint32
-	Patch uint32
-}
-
-func (o *SchemaVersion) Size() (s int) {
-	s += len([]byte(o.Name)) + binary.MaxVarintLen64
-	s += 3 * binary.MaxVarintLen32
-	return
-}
-
-func (o *SchemaVersion) Encode(e *Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeString(o.Name); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint32(o.Major); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint32(o.Minor); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint32(o.Patch); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *SchemaVersion) Decode(d *Decoder) (err error) {
-	if o.Name, err = d.DecodeString(); err != nil {
-		return err
-	}
-
-	if o.Major, err = d.DecodeUint32(); err != nil {
-		return err
-	}
-
-	if o.Minor, err = d.DecodeUint32(); err != nil {
-		return err
-	}
-
-	if o.Patch, err = d.DecodeUint32(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//===========================================================================
-// ACL
-//===========================================================================
-
-type AccessControl struct {
-	ClientID    ulid.ULID
-	Permissions uint8
-}
-
-func (o *AccessControl) Size() int {
-	// ULID + 1 byte
-	return 17
-}
-
-func (o *AccessControl) Encode(e *Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeULID(o.ClientID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint8(o.Permissions); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *AccessControl) Decode(d *Decoder) (err error) {
-	if o.ClientID, err = d.DecodeULID(); err != nil {
-		return err
-	}
-
-	if o.Permissions, err = d.DecodeUint8(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//===========================================================================
-// Provenance
-//===========================================================================
-
-type Publisher struct {
-	PublisherID ulid.ULID
-	ClientID    ulid.ULID
-	IPAddress   net.IP
-	UserAgent   string
-}
-
-func (o *Publisher) Size() (s int) {
-	// 2 ULIDs and 2 variable byte arrays
-	s += 16 + 16
-	s += len(o.IPAddress) + binary.MaxVarintLen64
-	s += len([]byte(o.UserAgent)) + binary.MaxVarintLen64
-	return
-}
-
-func (o *Publisher) Encode(e *Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeULID(o.PublisherID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeULID(o.ClientID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.Encode(o.IPAddress); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeString(o.UserAgent); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *Publisher) Decode(d *Decoder) (err error) {
-	if o.PublisherID, err = d.DecodeULID(); err != nil {
-		return err
-	}
-
-	if o.ClientID, err = d.DecodeULID(); err != nil {
-		return err
-	}
-
-	var ip []byte
-	if ip, err = d.Decode(); err != nil {
-		return err
-	}
-	o.IPAddress = net.IP(ip)
-
-	if o.UserAgent, err = d.DecodeString(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -556,14 +283,17 @@ const (
 )
 
 type Encryption struct {
-	PublicKeyID         string
-	EncryptionKey       []byte
-	HMACSecret          []byte
-	Signature           []byte
-	SealingAlgorithm    EncryptionAlgorithm
-	EncryptionAlgorithm EncryptionAlgorithm
-	SignatureAlgorithm  EncryptionAlgorithm
+	PublicKeyID         string              `json:"public_key_id,omitempty" msg:"public_key_id,omitempty"`
+	EncryptionKey       []byte              `json:"encryption_key,omitempty" msg:"encryption_key,omitempty"`
+	HMACSecret          []byte              `json:"hmac_secret,omitempty" msg:"hmac_secret,omitempty"`
+	Signature           []byte              `json:"signature,omitempty" msg:"signature,omitempty"`
+	SealingAlgorithm    EncryptionAlgorithm `json:"sealing_algorithm,omitempty" msg:"sealing_algorithm,omitempty"`
+	EncryptionAlgorithm EncryptionAlgorithm `json:"encryption_algoirthm" msg:"encryption_algorithm"`
+	SignatureAlgorithm  EncryptionAlgorithm `json:"signature_algorithm,omitempty" msg:"signature_algorithm,omitempty"`
 }
+
+var _ lani.Encodable = &Encryption{}
+var _ lani.Decodable = &Encryption{}
 
 func (o *Encryption) Size() (s int) {
 	s += len([]byte(o.PublicKeyID)) + binary.MaxVarintLen64
@@ -575,7 +305,7 @@ func (o *Encryption) Size() (s int) {
 	return
 }
 
-func (o *Encryption) Encode(e *Encoder) (n int, err error) {
+func (o *Encryption) Encode(e *lani.Encoder) (n int, err error) {
 	var m int
 	if m, err = e.EncodeString(o.PublicKeyID); err != nil {
 		return n + m, err
@@ -615,7 +345,7 @@ func (o *Encryption) Encode(e *Encoder) (n int, err error) {
 	return
 }
 
-func (o *Encryption) Decode(d *Decoder) (err error) {
+func (o *Encryption) Decode(d *lani.Decoder) (err error) {
 	if o.PublicKeyID, err = d.DecodeString(); err != nil {
 		return err
 	}
@@ -651,6 +381,60 @@ func (o *Encryption) Decode(d *Decoder) (err error) {
 	return nil
 }
 
+func ParseEncryptionAlgorithm(s string) (EncryptionAlgorithm, error) {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	switch s {
+	case "PLAINTEXT":
+		return Plaintext, nil
+	case "AES256_GCM":
+		return AES256_GCM, nil
+	case "AES192_GCM":
+		return AES192_GCM, nil
+	case "AES128_GCM":
+		return AES128_GCM, nil
+	case "HMAC_SHA256":
+		return HMAC_SHA256, nil
+	case "RSA_OEAP_SHA512":
+		return RSA_OEAP_SHA512, nil
+	default:
+		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
+	}
+}
+
+func (o EncryptionAlgorithm) String() string {
+	switch o {
+	case Plaintext:
+		return "PLAINTEXT"
+	case AES256_GCM:
+		return "AES256_GCM"
+	case AES192_GCM:
+		return "AES192_GCM"
+	case AES128_GCM:
+		return "AES128_GCM"
+	case HMAC_SHA256:
+		return "HMAC_SHA256"
+	case RSA_OEAP_SHA512:
+		return "RSA_OEAP_SHA512"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (o *EncryptionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *EncryptionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+	var alg string
+	if err := json.Unmarshal(data, &alg); err != nil {
+		return err
+	}
+	if *o, err = ParseEncryptionAlgorithm(alg); err != nil {
+		return err
+	}
+	return nil
+}
+
 //===========================================================================
 // Compression
 //===========================================================================
@@ -666,15 +450,18 @@ const (
 )
 
 type Compression struct {
-	Algorithm CompressionAlgorithm
-	Level     int64
+	Algorithm CompressionAlgorithm `json:"algorithm" msg:"algorithm"`
+	Level     int64                `json:"level,omitempty" msg:"level,omitempty"`
 }
+
+var _ lani.Encodable = &Compression{}
+var _ lani.Decodable = &Compression{}
 
 func (o *Compression) Size() int {
 	return 1 + binary.MaxVarintLen64
 }
 
-func (o *Compression) Encode(e *Encoder) (n int, err error) {
+func (o *Compression) Encode(e *lani.Encoder) (n int, err error) {
 	var m int
 	if m, err = e.EncodeUint8(uint8(o.Algorithm)); err != nil {
 		return n + m, err
@@ -689,7 +476,7 @@ func (o *Compression) Encode(e *Encoder) (n int, err error) {
 	return
 }
 
-func (o *Compression) Decode(d *Decoder) (err error) {
+func (o *Compression) Decode(d *lani.Decoder) (err error) {
 	var a uint8
 	if a, err = d.DecodeUint8(); err != nil {
 		return err
@@ -700,5 +487,55 @@ func (o *Compression) Decode(d *Decoder) (err error) {
 		return err
 	}
 
+	return nil
+}
+
+func ParseCompressionAlgorithm(s string) (CompressionAlgorithm, error) {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	switch s {
+	case "NONE":
+		return None, nil
+	case "GZIP":
+		return GZIP, nil
+	case "COMPRESS":
+		return COMPRESS, nil
+	case "DEFLATE":
+		return DEFLATE, nil
+	case "BROTLI":
+		return BROTLI, nil
+	default:
+		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
+	}
+}
+
+func (o CompressionAlgorithm) String() string {
+	switch o {
+	case None:
+		return "NONE"
+	case GZIP:
+		return "GZIP"
+	case COMPRESS:
+		return "COMPRESS"
+	case DEFLATE:
+		return "DEFLATE"
+	case BROTLI:
+		return "BROTLI"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (o *CompressionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.String())
+}
+
+func (o *CompressionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+	var alg string
+	if err := json.Unmarshal(data, &alg); err != nil {
+		return err
+	}
+	if *o, err = ParseCompressionAlgorithm(alg); err != nil {
+		return err
+	}
 	return nil
 }

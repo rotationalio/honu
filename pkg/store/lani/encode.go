@@ -1,8 +1,8 @@
-package store
+package lani
 
 import (
 	"encoding/binary"
-	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -12,22 +12,6 @@ const (
 	maxInt          = int(^uint(0) >> 1)
 	smallBufferSize = 64
 )
-
-// Marshal an encodable object into a byte slice for storage or serialization.
-func Marshal(v Encodable) (_ []byte, err error) {
-	encoder := &Encoder{}
-	encoder.Grow(v.Size())
-	if _, err = v.Encode(encoder); err != nil {
-		return nil, err
-	}
-	return encoder.Bytes(), nil
-}
-
-// All objects in this package must be encodable.
-type Encodable interface {
-	Size() int
-	Encode(*Encoder) (int, error)
-}
 
 // Encoder is similar to a bytes.Buffer in that it maintains an internal buffer that
 // it keeps at the largest capacity its seen for repeated encodings. To use the
@@ -242,23 +226,16 @@ func (e *Encoder) EncodeStruct(s Encodable) (n int, err error) {
 }
 
 func isNilEncodable(s Encodable) bool {
-	switch t := s.(type) {
-	case *Object:
-		return t == nil
-	case *Version:
-		return t == nil
-	case *SchemaVersion:
-		return t == nil
-	case *AccessControl:
-		return t == nil
-	case *Publisher:
-		return t == nil
-	case *Encryption:
-		return t == nil
-	case *Compression:
-		return t == nil
+	iv := reflect.ValueOf(s)
+	if !iv.IsValid() {
+		return true
+	}
+
+	switch iv.Kind() {
+	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Func, reflect.Interface:
+		return iv.IsNil()
 	default:
-		panic(fmt.Errorf("unknown type %T", t))
+		return false
 	}
 }
 

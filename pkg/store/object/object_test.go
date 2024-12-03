@@ -1,28 +1,52 @@
-package store_test
+package object_test
 
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	mrand "math/rand"
 	"net"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/oklog/ulid/v2"
-	"github.com/rotationalio/honu/pkg/store"
+	"github.com/rotationalio/honu/pkg/store/metadata"
+	"github.com/rotationalio/honu/pkg/store/object"
 	"github.com/stretchr/testify/require"
 )
 
-func TestObjectSerialization(t *testing.T) {
-	obj := generateRandomObject(Small)
-	data, err := store.Marshal(obj)
-	require.NoError(t, err, "could not marshal object")
-	require.Greater(t, len(data), 512, "expected object to be greater than the minimum data size")
+func TestObject(t *testing.T) {
+	meta, data := loadFixture(t)
 
-	cmp := &store.Object{}
-	err = store.Unmarshal(data, cmp)
-	require.NoError(t, err, "could not unmarshal object")
-	require.Equal(t, obj, cmp, "deserialized object does not match original")
+	obj, err := object.Marshal(meta, data)
+	require.NoError(t, err, "could not marshal object")
+
+	require.Len(t, obj, 1271, "unexpected length of encoded object")
+	require.Equal(t, object.StorageVersion, obj.StorageVersion())
+
+	ometa, err := obj.Metadata()
+	require.NoError(t, err, "could not decode metadata")
+	require.Equal(t, meta, ometa, "metadata not correctly serialized")
+
+	odata, err := obj.Data()
+	require.NoError(t, err, "could not decode data")
+	require.Equal(t, data, odata, "data not correctly serialized")
+}
+
+func loadFixture(t *testing.T) (*metadata.Metadata, []byte) {
+	var meta *metadata.Metadata
+	f, err := os.Open("testdata/metadata.json")
+	require.NoError(t, err, "could not open testdata/metadata.json")
+	defer f.Close()
+
+	err = json.NewDecoder(f).Decode(&meta)
+	require.NoError(t, err, "could not decode metadata")
+
+	data, err := os.ReadFile("testdata/data.json")
+	require.NoError(t, err, "could not read testdata/data.json")
+
+	return meta, data
 }
 
 //===========================================================================
@@ -40,14 +64,15 @@ const (
 
 func BenchmarkSerialization(b *testing.B) {
 
-	makeHonuEncode := func(objs []*store.Object) func(b *testing.B) {
+	makeHonuEncode := func(meta []*metadata.Metadata, data [][]byte) func(b *testing.B) {
 		return func(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
-				obj := objs[n%len(objs)]
+				m := meta[n%len(meta)]
+				d := data[n%len(data)]
 
 				b.StartTimer()
-				data, err := store.Marshal(obj)
+				data, err := object.Marshal(m, d)
 				b.StopTimer()
 
 				if err != nil {
@@ -64,13 +89,15 @@ func BenchmarkSerialization(b *testing.B) {
 			b.StopTimer()
 			for n := 0; n < b.N; n++ {
 				data := hnd[n%len(hnd)]
-				obj := &store.Object{}
 
 				b.StartTimer()
-				err := store.Unmarshal(data, obj)
+				obj := object.Object(data)
+				_, err := obj.Metadata()
+				_, err2 := obj.Data()
+
 				b.StopTimer()
 
-				if err != nil {
+				if err != nil || err2 != nil {
 					b.FailNow()
 				}
 			}
@@ -81,16 +108,17 @@ func BenchmarkSerialization(b *testing.B) {
 	makeSizeBenchmark := func(size Size) func(b *testing.B) {
 		return func(b *testing.B) {
 			// Generate objects for testing
-			objs := make([]*store.Object, 256)
-			for i := range objs {
-				objs[i] = generateRandomObject(size)
+			meta := make([]*metadata.Metadata, 256)
+			data := make([][]byte, 256)
+			for i := range meta {
+				meta[i], data[i] = generateRandomObject(size)
 			}
 
-			b.Run("Encode", makeHonuEncode(objs))
+			b.Run("Encode", makeHonuEncode(meta, data))
 
-			hnd := make([][]byte, len(objs))
-			for i, obj := range objs {
-				data, err := store.Marshal(obj)
+			hnd := make([][]byte, len(meta))
+			for i, m := range meta {
+				data, err := object.Marshal(m, data[i])
 				if err != nil {
 					b.FailNow()
 				}
@@ -111,8 +139,8 @@ func BenchmarkSerialization(b *testing.B) {
 // Generate Random Objects
 //===========================================================================
 
-func generateRandomObject(size Size) *store.Object {
-	obj := &store.Object{
+func generateRandomObject(size Size) (*metadata.Metadata, []byte) {
+	obj := &metadata.Metadata{
 		Version:      randVersion(false),
 		Schema:       randSchema(),
 		MIME:         "application/random",
@@ -129,21 +157,21 @@ func generateRandomObject(size Size) *store.Object {
 		Modified:     randTime(),
 	}
 
-	obj.Data = make([]byte, nRandomBytes(size))
-	if _, err := rand.Read(obj.Data); err != nil {
+	data := make([]byte, nRandomBytes(size))
+	if _, err := rand.Read(data); err != nil {
 		panic(err)
 	}
 
-	return obj
+	return obj, data
 }
 
-func randVersion(isParent bool) *store.Version {
+func randVersion(isParent bool) *metadata.Version {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	vers := &store.Version{
+	vers := &metadata.Version{
 		PID:       mrand.Uint64(),
 		Version:   mrand.Uint64(),
 		Region:    randRegion(),
@@ -158,13 +186,13 @@ func randVersion(isParent bool) *store.Version {
 	return vers
 }
 
-func randSchema() *store.SchemaVersion {
+func randSchema() *metadata.SchemaVersion {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	schema := &store.SchemaVersion{
+	schema := &metadata.SchemaVersion{
 		Name:  "RandomSchema",
 		Major: mrand.Uint32(),
 		Minor: mrand.Uint32(),
@@ -174,15 +202,15 @@ func randSchema() *store.SchemaVersion {
 	return schema
 }
 
-func randACL() []*store.AccessControl {
+func randACL() []*metadata.AccessControl {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	acl := make([]*store.AccessControl, mrand.Intn(64)+1)
+	acl := make([]*metadata.AccessControl, mrand.Intn(64)+1)
 	for i := range acl {
-		acl[i] = &store.AccessControl{
+		acl[i] = &metadata.AccessControl{
 			ClientID:    ulid.MustNew(ulid.Now(), rand.Reader),
 			Permissions: randUint8(),
 		}
@@ -251,13 +279,13 @@ func randRegion() string {
 	return regions[mrand.Intn(len(regions))]
 }
 
-func randPublisher() *store.Publisher {
+func randPublisher() *metadata.Publisher {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	return &store.Publisher{
+	return &metadata.Publisher{
 		PublisherID: ulid.MustNew(ulid.Now(), rand.Reader),
 		ClientID:    ulid.MustNew(ulid.Now(), rand.Reader),
 		IPAddress:   net.IPv4(randUint8(), randUint8(), randUint8(), randUint8()),
@@ -265,26 +293,26 @@ func randPublisher() *store.Publisher {
 	}
 }
 
-func randEncryption() *store.Encryption {
+func randEncryption() *metadata.Encryption {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	algs := []store.EncryptionAlgorithm{
-		store.Plaintext, store.AES128_GCM, store.AES192_GCM, store.AES256_GCM,
+	algs := []metadata.EncryptionAlgorithm{
+		metadata.Plaintext, metadata.AES128_GCM, metadata.AES192_GCM, metadata.AES256_GCM,
 	}
 
-	enc := &store.Encryption{
+	enc := &metadata.Encryption{
 		EncryptionAlgorithm: algs[mrand.Intn(len(algs))],
 	}
 
-	if enc.EncryptionAlgorithm == store.Plaintext {
+	if enc.EncryptionAlgorithm == metadata.Plaintext {
 		return enc
 	}
 
-	enc.SealingAlgorithm = store.RSA_OEAP_SHA512
-	enc.SignatureAlgorithm = store.HMAC_SHA256
+	enc.SealingAlgorithm = metadata.RSA_OEAP_SHA512
+	enc.SignatureAlgorithm = metadata.HMAC_SHA256
 	enc.PublicKeyID = base64.RawStdEncoding.EncodeToString(randBytes(16))
 	enc.EncryptionKey = randBytes(32)
 	enc.HMACSecret = randBytes(32)
@@ -293,21 +321,21 @@ func randEncryption() *store.Encryption {
 	return enc
 }
 
-func randCompression() *store.Compression {
+func randCompression() *metadata.Compression {
 	// 10% chance of nil
 	if mrand.Float32() < 0.1 {
 		return nil
 	}
 
-	algs := []store.CompressionAlgorithm{
-		store.None, store.GZIP, store.COMPRESS, store.DEFLATE, store.BROTLI,
+	algs := []metadata.CompressionAlgorithm{
+		metadata.None, metadata.GZIP, metadata.COMPRESS, metadata.DEFLATE, metadata.BROTLI,
 	}
 
-	cmp := &store.Compression{
+	cmp := &metadata.Compression{
 		Algorithm: algs[mrand.Intn(len(algs))],
 	}
 
-	if cmp.Algorithm == store.GZIP || cmp.Algorithm == store.COMPRESS {
+	if cmp.Algorithm == metadata.GZIP || cmp.Algorithm == metadata.COMPRESS {
 		cmp.Level = mrand.Int63n(9) + 1
 	}
 

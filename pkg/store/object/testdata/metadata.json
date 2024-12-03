@@ -1,0 +1,57 @@
+{
+  "version": {
+    "pid": 8,
+    "version": 12,
+    "region": "us-central1",
+    "parent": {
+      "pid": 3,
+      "version": 11,
+      "region": "us-central1",
+      "created": "2024-11-30T10:29:59Z"
+    },
+    "created": "2024-11-30T10:29:59Z"
+  },
+  "schema": {
+    "name": "Weather",
+    "major": 1,
+    "minor": 3,
+    "patch": 0
+  },
+  "mime": "application/json",
+  "owner": "01JDYY8VJHHXJKVD5RF5W7MQ15",
+  "group": "01JDYY94S6D3W15CYXQTSRPRNB",
+  "permissions": 23,
+  "acl": [
+    {
+      "client_id": "01JDZ1C8PFCTTFH0NYYQPRJYZ3",
+      "permissions": 84
+    },
+    {
+      "client_id": "01JDYY8VJHHXJKVD5RF5W7MQ15",
+      "permissions": 76
+    }
+  ],
+  "write_regions": ["us-central1"],
+  "publisher": {
+    "publisher_id": "01JDZ187FNTJANGYVSBKEAQ0RT",
+    "client_id": "01JDZ18DE4RH4N3TWY7QRPTCYX",
+    "ipaddr": "10.42.10.123",
+    "user_agent": "PyHonu v1"
+  },
+  "encryption": {
+    "public_key_id": "45iNEqND87CR+760L57Pk1yV+SXW",
+    "encryption_key": "2F3XgjvZaEMthrefefEsH9D4rg6inJyugd5AJRkgv84clHv6kevXWyRS",
+    "hmac_secret": "34X492GENOziM09fGATa4HzAyf3vNYNwsF+vhfjjWsM7WQGfkMujxYqv",
+    "signature": "0/HnIYtTOUoFyZzXJboRoyt3PZ24ORZXRzJJO1BNR5GAuZEY9+/nUy7t",
+    "sealing_algorithm": "RSA_OEAP_SHA512",
+    "encryption_algorithm": "AES256_GCM",
+    "signature_algorithm": "HMAC_SHA256"
+  },
+  "compression": {
+    "algorithm": "GZIP",
+    "level": 9
+  },
+  "flags": 42,
+  "created": "2024-11-30T10:29:59Z",
+  "modified": "2024-11-30T10:29:59Z"
+}
