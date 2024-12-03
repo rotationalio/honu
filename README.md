@@ -17,12 +17,16 @@ Protocol Buffers are a compact, cross-language compatible data serialization for
 ```
 goos: darwin
 goarch: arm64
-pkg: github.com/rotationalio/honu/pkg/store
+pkg: github.com/rotationalio/honu/pkg/store/object
 cpu: Apple M1 Max
-BenchmarkSerialization/Small/Encode/Honu-10         	  653840	      1905 ns/op	      1471 bytes	    4319 B/op	       2 allocs/op
-BenchmarkSerialization/Small/Encode/Protobuf-10     	  346150	      3164 ns/op	      2426 bytes	    4044 B/op	       1 allocs/op
-BenchmarkSerialization/Small/Decode/Honu-10         	  343032	      3421 ns/op	    4784 B/op	      62 allocs/op
-BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	    8367 B/op	     127 allocs/op
+BenchmarkSerialization/Small/Encode-10  	  578818	      1768 ns/op	      4520 bytes	    4487 B/op	       2 allocs/op
+BenchmarkSerialization/Small/Decode-10  	  402945	      2686 ns/op	    2341 B/op	      62 allocs/op
+BenchmarkSerialization/Medium/Encode-10 	  363483	      3308 ns/op	     10128 bytes	   28081 B/op	       2 allocs/op
+BenchmarkSerialization/Medium/Decode-10 	  471076	      2562 ns/op	    2322 B/op	      61 allocs/op
+BenchmarkSerialization/Large/Encode-10  	   93942	     12124 ns/op	    303630 bytes	  207933 B/op	       2 allocs/op
+BenchmarkSerialization/Large/Decode-10  	  467475	      2736 ns/op	    2334 B/op	      62 allocs/op
+BenchmarkSerialization/XLarge/Encode-10 	    7250	    138013 ns/op	   4926099 bytes	 3247592 B/op	       2 allocs/op
+BenchmarkSerialization/XLarge/Decode-10 	  407468	      2749 ns/op	    2333 B/op	      62 allocs/op
 ```
 
 ![Benchmarks](./docs/static/img/serialization-benchmark.png)
@@ -30,25 +34,3 @@ BenchmarkSerialization/Small/Decode/Protobuf-10     	  161241	      7889 ns/op	 
 ## Documentation
 
 The docs are set up using the [Cinder](https://sourcefoundry.org/cinder/) MkDocs theme, ported (somewhat) into Hugo using the [Cinder GitHub repository](https://github.com/chrissimpkins/cinder). A lot of work still needs to be done to get these docs ready for prime time, but it serves as a quick placeholder while we're working on the database.
-
-
-## TEMPORARY SCRATCH SPACE
-
-Before refactor:
-
-```
-goos: darwin
-goarch: arm64
-pkg: github.com/rotationalio/honu/pkg/store/object
-cpu: Apple M1 Max
-BenchmarkSerialization/Small/Encode-10  	  645108	      1626 ns/op	      3292 bytes	    4421 B/op	       2 allocs/op
-BenchmarkSerialization/Small/Decode-10  	  423475	      2824 ns/op	    4906 B/op	      62 allocs/op
-BenchmarkSerialization/Medium/Encode-10 	  339535	      3586 ns/op	     24003 bytes	   28953 B/op	       2 allocs/op
-BenchmarkSerialization/Medium/Decode-10 	  221631	      4822 ns/op	   29150 B/op	      60 allocs/op
-BenchmarkSerialization/Large/Encode-10  	   84943	     13123 ns/op	    179931 bytes	  201151 B/op	       2 allocs/op
-BenchmarkSerialization/Large/Decode-10  	   84324	     14728 ns/op	  201911 B/op	      62 allocs/op
-BenchmarkSerialization/XLarge/Encode-10 	    6607	    155824 ns/op	   2446547 bytes	 3285065 B/op	       2 allocs/op
-BenchmarkSerialization/XLarge/Decode-10 	    9144	    164422 ns/op	 3285671 B/op	      61 allocs/op
-PASS
-ok  	github.com/rotationalio/honu/pkg/store/object	88.466s
-```
