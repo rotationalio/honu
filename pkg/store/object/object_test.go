@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
+	"github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/rotationalio/honu/pkg/store/object"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func TestObject(t *testing.T) {
 	obj, err := object.Marshal(meta, data)
 	require.NoError(t, err, "could not marshal object")
 
-	require.Len(t, obj, 1271, "unexpected length of encoded object")
+	require.Len(t, obj, 1248, "unexpected length of encoded object")
 	require.Equal(t, object.StorageVersion, obj.StorageVersion())
 
 	ometa, err := obj.Metadata()
@@ -141,7 +142,7 @@ func BenchmarkSerialization(b *testing.B) {
 
 func generateRandomObject(size Size) (*metadata.Metadata, []byte) {
 	obj := &metadata.Metadata{
-		Version:      randVersion(false),
+		Version:      randVersion(),
 		Schema:       randSchema(),
 		MIME:         "application/random",
 		Owner:        ulid.MustNew(ulid.Now(), rand.Reader),
@@ -165,22 +166,17 @@ func generateRandomObject(size Size) (*metadata.Metadata, []byte) {
 	return obj, data
 }
 
-func randVersion(isParent bool) *metadata.Version {
-	// 10% chance of nil
-	if mrand.Float32() < 0.1 {
-		return nil
-	}
-
+func randVersion() *metadata.Version {
 	vers := &metadata.Version{
-		PID:       mrand.Uint64(),
-		Version:   mrand.Uint64(),
+		Scalar:    lamport.Scalar{PID: mrand.Uint32(), VID: mrand.Uint64()},
 		Region:    randRegion(),
 		Tombstone: mrand.Float32() < 0.25,
 		Created:   randTime(),
 	}
 
-	if !isParent {
-		vers.Parent = randVersion(true)
+	// 10% chance of nil parent
+	if mrand.Float32() < 0.9 {
+		vers.Parent = &lamport.Scalar{PID: mrand.Uint32(), VID: mrand.Uint64()}
 	}
 
 	return vers

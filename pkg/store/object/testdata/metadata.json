@@ -1,14 +1,8 @@
 {
   "version": {
-    "pid": 8,
-    "version": 12,
+    "scalar": "8.12",
     "region": "us-central1",
-    "parent": {
-      "pid": 3,
-      "version": 11,
-      "region": "us-central1",
-      "created": "2024-11-30T10:29:59Z"
-    },
+    "parent": "3.11",
     "created": "2024-11-30T10:29:59Z"
   },
   "schema": {
