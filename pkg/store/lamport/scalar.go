@@ -1,8 +1,13 @@
 package lamport
 
 import (
+	"bytes"
+	"encoding"
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 
 	"github.com/rotationalio/honu/pkg/store/lani"
 )
@@ -23,12 +28,50 @@ type Scalar struct {
 }
 
 var (
-	zero                = &Scalar{0, 0}
-	_    lani.Encodable = &Scalar{}
-	_    lani.Decodable = &Scalar{}
+	zero                            = &Scalar{0, 0}
+	scre                            = regexp.MustCompile(`^(\d+)\.(\d+)$`)
+	_    lani.Encodable             = &Scalar{}
+	_    lani.Decodable             = &Scalar{}
+	_    encoding.BinaryMarshaler   = &Scalar{}
+	_    encoding.BinaryUnmarshaler = &Scalar{}
+	_    encoding.TextMarshaler     = &Scalar{}
+	_    encoding.TextUnmarshaler   = &Scalar{}
 )
 
 const scalarSize = binary.MaxVarintLen32 + binary.MaxVarintLen64
+
+// Compare returns an integer comparing two scalars using a happens before relationship.
+// The result will be 0 if a == b, -1 if a < b (e.g. a happens before b), and
+// +1 if a > b (e.g. b happens before a). A nil argument is equivalent to a zero scalar.
+func Compare(a, b *Scalar) int {
+	if a == nil && b == nil {
+		return 0
+	}
+
+	if a == nil {
+		a = zero
+	}
+
+	if b == nil {
+		b = zero
+	}
+
+	if a.VID == b.VID {
+		switch {
+		case a.PID < b.PID:
+			return -1
+		case a.PID > b.PID:
+			return 1
+		default:
+			return 0
+		}
+	}
+
+	if a.VID > b.VID {
+		return 1
+	}
+	return -1
+}
 
 // Returns true if the scalar is the zero-valued scalar (0.0)
 func (s *Scalar) IsZero() bool {
@@ -99,40 +142,31 @@ func (s *Scalar) UnmarshalBinary(data []byte) (err error) {
 	return s.Decode(d)
 }
 
+func (s *Scalar) MarshalText() (_ []byte, err error) {
+	return []byte(s.String()), nil
+}
+
+func (s *Scalar) UnmarshalText(text []byte) (err error) {
+	if !scre.Match(text) {
+		return errors.New("could not parse text representation of a scalar")
+	}
+
+	parts := bytes.Split(text, []byte{'.'})
+
+	var pid uint64
+	if pid, err = strconv.ParseUint(string(parts[0]), 10, 32); err != nil {
+		panic("pid is not parseable even though regular expression matched.")
+	}
+	s.PID = uint32(pid)
+
+	if s.VID, err = strconv.ParseUint(string(parts[1]), 10, 32); err != nil {
+		panic("pid is not parseable even though regular expression matched.")
+	}
+
+	return nil
+}
+
 // Returns a scalar version representation in the form PID.VID using decimal notation.
 func (s *Scalar) String() string {
 	return fmt.Sprintf("%d.%d", s.PID, s.VID)
-}
-
-// Compare returns an integer comparing two scalars using a happens before relationship.
-// The result will be 0 if a == b, -1 if a < b (e.g. a happens before b), and
-// +1 if a > b (e.g. b happens before a). A nil argument is equivalent to a zero scalar.
-func Compare(a, b *Scalar) int {
-	if a == nil && b == nil {
-		return 0
-	}
-
-	if a == nil {
-		a = zero
-	}
-
-	if b == nil {
-		b = zero
-	}
-
-	if a.VID == b.VID {
-		switch {
-		case a.PID < b.PID:
-			return -1
-		case a.PID > b.PID:
-			return 1
-		default:
-			return 0
-		}
-	}
-
-	if a.VID > b.VID {
-		return 1
-	}
-	return -1
 }

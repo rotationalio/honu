@@ -1,6 +1,7 @@
 package lamport_test
 
 import (
+	"encoding/json"
 	"math/rand/v2"
 	"testing"
 
@@ -19,10 +20,6 @@ func TestScalar(t *testing.T) {
 		require.False(t, (&Scalar{0, 1}).IsZero(), "0.1 should not be zero")
 	})
 
-	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "1.1", one.String())
-	})
-
 	t.Run("Serialize", func(t *testing.T) {
 		current := &Scalar{}
 		for i := 0; i < 128; i++ {
@@ -37,6 +34,59 @@ func TestScalar(t *testing.T) {
 
 			current = randNextScalar(current)
 		}
+	})
+
+	t.Run("Text", func(t *testing.T) {
+		current := &Scalar{}
+		for i := 0; i < 128; i++ {
+			data, err := current.MarshalText()
+			require.NoError(t, err, "could not marshal %s", current)
+
+			cmpr := &Scalar{}
+			err = cmpr.UnmarshalText(data)
+			require.NoError(t, err, "could not unmarshal %d bytes", len(data))
+
+			require.Equal(t, current, cmpr, "unmarshaled scalar does not match marshaled one")
+
+			current = randNextScalar(current)
+		}
+	})
+
+	t.Run("BadText", func(t *testing.T) {
+		testCases := []string{
+			"123",
+			"a.b",
+			"a.123",
+			"1.abc",
+			"",
+			"1.1.1",
+			"1.",
+			".1",
+		}
+
+		for i, tc := range testCases {
+			err := (&Scalar{}).UnmarshalText([]byte(tc))
+			require.Error(t, err, "expected errror on test case %d", i)
+		}
+	})
+
+	t.Run("Binary", func(t *testing.T) {
+		vers := &Scalar{42, 198}
+		data, err := vers.MarshalBinary()
+		require.NoError(t, err, "could not marshal scalar as a binary value")
+		require.Equal(t, []byte{0x2a, 0xc6, 0x1}, data)
+	})
+
+	t.Run("JSON", func(t *testing.T) {
+		s := &Scalar{}
+		data := []byte(`"8.16"`)
+
+		require.NoError(t, json.Unmarshal(data, s), "could not unmarshal s")
+		require.Equal(t, &Scalar{8, 16}, s, "incorrect unmarshal")
+
+		cmpt, err := json.Marshal(s)
+		require.NoError(t, err, "could not marshal s")
+		require.Equal(t, data, cmpt, "unexpected marshaled data")
 	})
 }
 
