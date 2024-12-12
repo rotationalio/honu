@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/rotationalio/honu/pkg/store/lani"
 )
 
@@ -12,25 +13,22 @@ import (
 //===========================================================================
 
 type Version struct {
-	PID       uint64    `json:"pid" msg:"pid"`
-	Version   uint64    `json:"version" msg:"version"`
-	Region    string    `json:"region" msg:"region"`
-	Parent    *Version  `json:"parent,omitempty" msg:"parent,omitempty"`
-	Tombstone bool      `json:"tombstone,omitempty" msg:"tombstone,omitempty"`
-	Created   time.Time `json:"created" msg:"created"`
+	Scalar    lamport.Scalar  `json:"scalar" msg:"scalar"`
+	Region    string          `json:"region" msg:"region"`
+	Parent    *lamport.Scalar `json:"parent,omitempty" msg:"parent,omitempty"`
+	Tombstone bool            `json:"tombstone,omitempty" msg:"tombstone,omitempty"`
+	Created   time.Time       `json:"created" msg:"created"`
 }
 
 var _ lani.Encodable = &Version{}
 var _ lani.Decodable = &Version{}
 
 func (o *Version) Size() (s int) {
-	s += 2 * binary.MaxVarintLen64
-	s += len([]byte(o.Region)) + binary.MaxVarintLen64
+	s += o.Scalar.Size() // Scalar uint32 + uint64
+	s += 1               // Add 1 for the parent nil bool
 
 	if o.Parent != nil {
-		s += o.Parent.Size() + 1 // Add 1 for the not nil bool
-	} else {
-		s += 1 // Add 1 for the nil bool
+		s += o.Parent.Size()
 	}
 
 	s += 1                     // Tombstone bool
@@ -41,12 +39,7 @@ func (o *Version) Size() (s int) {
 
 func (o *Version) Encode(e *lani.Encoder) (n int, err error) {
 	var m int
-	if m, err = e.EncodeUint64(o.PID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint64(o.Version); err != nil {
+	if m, err = o.Scalar.Encode(e); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -75,11 +68,7 @@ func (o *Version) Encode(e *lani.Encoder) (n int, err error) {
 }
 
 func (o *Version) Decode(d *lani.Decoder) (err error) {
-	if o.PID, err = d.DecodeUint64(); err != nil {
-		return err
-	}
-
-	if o.Version, err = d.DecodeUint64(); err != nil {
+	if err = o.Scalar.Decode(d); err != nil {
 		return err
 	}
 
@@ -88,7 +77,7 @@ func (o *Version) Decode(d *lani.Decoder) (err error) {
 	}
 
 	var isNil bool
-	o.Parent = &Version{}
+	o.Parent = &lamport.Scalar{}
 
 	if isNil, err = d.DecodeStruct(o.Parent); err != nil {
 		return err
