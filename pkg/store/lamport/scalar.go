@@ -20,8 +20,8 @@ import (
 // Each scalar is 12 bytes and is composed of an 4 byte PID which should be unique to
 // every process in the system, and an 8 byte monotonically increasing VID that
 // represents the next latest version. In the case of a scalar with the same VID, the
-// scalar with the larger PID happens before the scalar with the smaller PID (e.g.
-// older processes, processes with smaller PIDs, win ties).
+// scalar with the smaller PID happens before the scalar with the larger PID (e.g.
+// newer processes, processes with bigger PIDs, win ties).
 type Scalar struct {
 	PID uint32
 	VID uint64

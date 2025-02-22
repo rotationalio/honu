@@ -132,6 +132,12 @@ func TestCompare(t *testing.T) {
 		{
 			&Scalar{2, 2}, &Scalar{2, 2}, 0,
 		},
+		{
+			&Scalar{4, 4}, &Scalar{4, 9}, -1,
+		},
+		{
+			&Scalar{1, 10}, &Scalar{10, 10}, -1,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -184,20 +190,27 @@ func TestSort(t *testing.T) {
 
 	// Ensure that the scalars are sorted
 	for i := 1; i < len(scalars); i++ {
-		require.True(t, scalars[i-1].Before(scalars[i]) || scalars[i-1].Equals(scalars[i]), "scalars[%d] is not before or equal to scalars[%d]", i-1, i)
+		require.True(t, Compare(scalars[i-1], scalars[i]) <= 0, "scalars[%d] is not before or equal to scalars[%d]", i-1, i)
 	}
 }
 
 func randScalar() *Scalar {
 	return &Scalar{
 		PID: uint32(rand.Int32N(24)),
-		VID: uint64(rand.Int64N(10000)),
+		VID: uint64(rand.Int64N(48)),
 	}
 }
 
 func randNextScalar(prev *Scalar) *Scalar {
 	s := &Scalar{}
 	s.PID = uint32(rand.Int32N(24))
-	s.VID = uint64(rand.Int64N(32)) + prev.VID
+	s.VID = uint64(rand.Int64N(5)) + prev.VID
+
+	if !prev.Before(s) {
+		s.PID = prev.PID + 1
+		if !prev.Before(s) {
+			panic("failed to generate next scalar")
+		}
+	}
 	return s
 }
