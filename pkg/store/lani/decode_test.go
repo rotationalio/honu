@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid/v2"
 	. "github.com/rotationalio/honu/pkg/store/lani"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/ulid"
 )
 
 func TestUnmarshal(t *testing.T) {

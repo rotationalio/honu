@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/oklog/ulid/v2"
+	"go.rtnl.ai/ulid"
 )
 
 const (

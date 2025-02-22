@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid/v2"
 	"github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/rotationalio/honu/pkg/store/object"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/ulid"
 )
 
 func TestObject(t *testing.T) {
@@ -23,7 +23,7 @@ func TestObject(t *testing.T) {
 	obj, err := object.Marshal(meta, data)
 	require.NoError(t, err, "could not marshal object")
 
-	require.Len(t, obj, 1248, "unexpected length of encoded object")
+	require.Len(t, obj, 1280, "unexpected length of encoded object")
 	require.Equal(t, object.StorageVersion, obj.StorageVersion())
 
 	ometa, err := obj.Metadata()

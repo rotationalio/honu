@@ -3,6 +3,7 @@ package lamport_test
 import (
 	"encoding/json"
 	"math/rand/v2"
+	"sort"
 	"testing"
 
 	. "github.com/rotationalio/honu/pkg/store/lamport"
@@ -167,6 +168,30 @@ func TestCompare(t *testing.T) {
 			require.True(t, tc.b.After(tc.a), "test case %d after failed", i)
 		}
 
+	}
+
+}
+
+func TestSort(t *testing.T) {
+	// Create a list of random scalars
+	scalars := make(Scalars, 128)
+	for i := range scalars {
+		scalars[i] = randScalar()
+	}
+
+	// Sort the scalars
+	sort.Sort(scalars)
+
+	// Ensure that the scalars are sorted
+	for i := 1; i < len(scalars); i++ {
+		require.True(t, scalars[i-1].Before(scalars[i]) || scalars[i-1].Equals(scalars[i]), "scalars[%d] is not before or equal to scalars[%d]", i-1, i)
+	}
+}
+
+func randScalar() *Scalar {
+	return &Scalar{
+		PID: uint32(rand.Int32N(24)),
+		VID: uint64(rand.Int64N(10000)),
 	}
 }
 

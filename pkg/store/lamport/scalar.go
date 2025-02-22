@@ -170,3 +170,13 @@ func (s *Scalar) UnmarshalText(text []byte) (err error) {
 func (s *Scalar) String() string {
 	return fmt.Sprintf("%d.%d", s.PID, s.VID)
 }
+
+//===========================================================================
+// Sort Interface
+//===========================================================================
+
+type Scalars []*Scalar
+
+func (s Scalars) Len() int           { return len(s) }
+func (s Scalars) Less(i, j int) bool { return s[i].Before(s[j]) }
+func (s Scalars) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
