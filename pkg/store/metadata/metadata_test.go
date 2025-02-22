@@ -24,6 +24,16 @@ func TestMetadataSerialization(t *testing.T) {
 	require.Equal(t, obj, cmp, "deserialized metdata does not match original")
 }
 
+func TestMetadataKey(t *testing.T) {
+	var obj *Metadata
+	loadFixture(t, "metadata.json", &obj)
+
+	key := obj.Key()
+	require.Equal(t, obj.CollectionID, key.CollectionID())
+	require.Equal(t, obj.ObjectID, key.ObjectID())
+	require.Equal(t, obj.Version.Scalar, key.Version())
+}
+
 func loadFixture(t *testing.T, name string, v interface{}) {
 	path := filepath.Join("testdata", name)
 	f, err := os.Open(path)

@@ -14,11 +14,10 @@ import (
 )
 
 func TestNewKey(t *testing.T) {
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 	vers := lamport.Scalar{VID: 1, PID: 2}
 
-	k := key.New(oid, cid, vers)
+	k := key.New(cid, oid, vers)
 	require.NotNil(t, k)
 	require.Equal(t, 45, len(k))
 	require.Equal(t, oid, k.ObjectID())
@@ -30,8 +29,7 @@ func TestKeyLexicographic(t *testing.T) {
 	// For the same collection and object ID the keys should be lexicographically sorted
 	// by the version to ensure that we can read the latest version either by choosing
 	// the first item in a list of sorted keys or the last item.
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 
 	t.Run("Static", func(t *testing.T) {
 		versions := lamport.Scalars{
@@ -46,11 +44,13 @@ func TestKeyLexicographic(t *testing.T) {
 			{PID: 1, VID: 10},
 			{PID: 2, VID: 10},
 			{PID: 2, VID: 10},
+			{PID: 4, VID: 11},
+			{PID: 13, VID: 11},
 		}
 
 		keys := make(key.Keys, len(versions))
 		for i, v := range versions {
-			keys[i] = key.New(oid, cid, *v)
+			keys[i] = key.New(cid, oid, *v)
 		}
 
 		// Ensure the keys are sorted both by monotonically increasing version and by
@@ -68,7 +68,7 @@ func TestKeyLexicographic(t *testing.T) {
 
 		// Create a list of keys with monotonically increasing versions.
 		for i := 0; i < len(keys); i++ {
-			keys[i] = key.New(oid, cid, *vers)
+			keys[i] = key.New(cid, oid, *vers)
 			vers = randNextScalar(vers)
 		}
 
@@ -87,7 +87,7 @@ func TestKeyLexicographic(t *testing.T) {
 
 		// Create a list of keys with monotonically increasing versions.
 		for i := 0; i < len(keys); i++ {
-			keys[i] = key.New(oid, cid, *vers)
+			keys[i] = key.New(cid, oid, *vers)
 			vers = randNextScalar(vers)
 		}
 
@@ -104,12 +104,11 @@ func TestKeyLexicographic(t *testing.T) {
 }
 
 func TestKeyCheck(t *testing.T) {
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 	vers := lamport.Scalar{VID: 1, PID: 2}
 
 	t.Run("Valid", func(t *testing.T) {
-		k := key.New(oid, cid, vers)
+		k := key.New(cid, oid, vers)
 		require.NoError(t, k.Check())
 	})
 
@@ -119,19 +118,18 @@ func TestKeyCheck(t *testing.T) {
 	})
 
 	t.Run("BadVersion", func(t *testing.T) {
-		badKey := key.New(oid, cid, vers)
+		badKey := key.New(cid, oid, vers)
 		badKey[44] = 0x2
 		require.ErrorIs(t, badKey.Check(), key.ErrBadVersion)
 	})
 }
 
 func TestObjectID(t *testing.T) {
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 	vers := lamport.Scalar{VID: 80, PID: 122}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(oid, cid, vers)
+		k := key.New(cid, oid, vers)
 		require.Equal(t, oid, k.ObjectID())
 	})
 
@@ -144,12 +142,11 @@ func TestObjectID(t *testing.T) {
 }
 
 func TestCollectionID(t *testing.T) {
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 	vers := lamport.Scalar{VID: 391, PID: 8}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(oid, cid, vers)
+		k := key.New(cid, oid, vers)
 		require.Equal(t, cid, k.CollectionID())
 	})
 
@@ -162,12 +159,11 @@ func TestCollectionID(t *testing.T) {
 }
 
 func TestVersion(t *testing.T) {
-	oid := ulid.Make()
-	cid := ulid.Make()
+	cid, oid := ulid.Make(), ulid.Make()
 	vers := lamport.Scalar{VID: 5, PID: 1}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(oid, cid, vers)
+		k := key.New(cid, oid, vers)
 		require.Equal(t, vers, k.Version())
 	})
 

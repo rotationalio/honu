@@ -3,6 +3,7 @@ package object
 import (
 	"encoding/binary"
 
+	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/rotationalio/honu/pkg/store/lani"
 	"github.com/rotationalio/honu/pkg/store/metadata"
 )
@@ -48,6 +49,18 @@ func (o Object) StorageVersion() uint8 {
 		return 0
 	}
 	return uint8(o[0])
+}
+
+// Shortcut for parsing the metadata then getting the key from it. However, it is not
+// recommended to do this if you need access to the metadata since that will require
+// parsing the metadata twice.
+func (o Object) Key() (_ key.Key, err error) {
+	// TODO: parse the key from the metadata without parsing the entire struct.
+	var meta *metadata.Metadata
+	if meta, err = o.Metadata(); err != nil {
+		return nil, err
+	}
+	return meta.Key(), nil
 }
 
 func (o Object) Metadata() (*metadata.Metadata, error) {

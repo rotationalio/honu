@@ -36,24 +36,24 @@ var (
 // maintain lexicographic sorting of the the data.
 type Key []byte
 
-func New(oid, cid ulid.ULID, vers lamport.Scalar) Key {
+func New(cid, oid ulid.ULID, vers lamport.Scalar) Key {
 	key := make([]byte, keySize)
-	copy(key[0:16], oid[:])
-	copy(key[16:32], cid[:])
+	copy(key[0:16], cid[:])
+	copy(key[16:32], oid[:])
 	binary.BigEndian.PutUint64(key[32:40], vers.VID)
 	binary.BigEndian.PutUint32(key[40:44], vers.PID)
 	key[44] = keyVersion
 	return Key(key)
 }
 
-func (k Key) ObjectID() ulid.ULID {
+func (k Key) CollectionID() ulid.ULID {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
 	return ulid.ULID(k[0:16])
 }
 
-func (k Key) CollectionID() ulid.ULID {
+func (k Key) ObjectID() ulid.ULID {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}

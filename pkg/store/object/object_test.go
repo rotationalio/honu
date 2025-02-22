@@ -1,6 +1,7 @@
 package object_test
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -29,6 +30,10 @@ func TestObject(t *testing.T) {
 	ometa, err := obj.Metadata()
 	require.NoError(t, err, "could not decode metadata")
 	require.Equal(t, meta, ometa, "metadata not correctly serialized")
+
+	key, err := obj.Key()
+	require.NoError(t, err, "could not decode key from object")
+	require.True(t, bytes.Equal(ometa.Key()[:], key[:]), "object key did not match metadata key")
 
 	odata, err := obj.Data()
 	require.NoError(t, err, "could not decode data")

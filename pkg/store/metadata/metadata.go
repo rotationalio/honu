@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/rotationalio/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
@@ -36,6 +37,11 @@ type Metadata struct {
 
 var _ lani.Encodable = &Metadata{}
 var _ lani.Decodable = &Metadata{}
+
+func (o *Metadata) Key() key.Key {
+	// TODO: should the key be cached on the metadata to prevent multiple allocations?
+	return key.New(o.CollectionID, o.ObjectID, o.Version.Scalar)
+}
 
 func (o *Metadata) Size() (s int) {
 	// ObjectID, CollectionID
