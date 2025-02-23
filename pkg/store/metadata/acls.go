@@ -1,8 +1,8 @@
 package metadata
 
 import (
-	"github.com/oklog/ulid/v2"
 	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/ulid"
 )
 
 //===========================================================================

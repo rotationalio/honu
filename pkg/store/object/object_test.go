@@ -1,6 +1,7 @@
 package object_test
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -10,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oklog/ulid/v2"
 	"github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/rotationalio/honu/pkg/store/object"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/ulid"
 )
 
 func TestObject(t *testing.T) {
@@ -23,16 +24,60 @@ func TestObject(t *testing.T) {
 	obj, err := object.Marshal(meta, data)
 	require.NoError(t, err, "could not marshal object")
 
-	require.Len(t, obj, 1248, "unexpected length of encoded object")
+	require.Len(t, obj, 1280, "unexpected length of encoded object")
 	require.Equal(t, object.StorageVersion, obj.StorageVersion())
 
 	ometa, err := obj.Metadata()
 	require.NoError(t, err, "could not decode metadata")
 	require.Equal(t, meta, ometa, "metadata not correctly serialized")
 
+	key, err := obj.Key()
+	require.NoError(t, err, "could not decode key from object")
+	require.True(t, bytes.Equal(ometa.Key()[:], key[:]), "object key did not match metadata key")
+
 	odata, err := obj.Data()
 	require.NoError(t, err, "could not decode data")
 	require.Equal(t, data, odata, "data not correctly serialized")
+
+	require.False(t, obj.Tombstone(), "object should not be a tombstone")
+}
+
+func TestTombstone(t *testing.T) {
+	meta, _ := loadFixture(t)
+
+	obj, err := object.Marshal(meta, nil)
+	require.NoError(t, err, "could not marshal object")
+
+	require.True(t, obj.Tombstone(), "object should be a tombstone")
+
+	odata, err := obj.Data()
+	require.NoError(t, err, "could not decode data")
+	require.Nil(t, odata, "data not correctly serialized")
+}
+
+func TestNil(t *testing.T) {
+	obj := object.Object(nil)
+	require.Equal(t, uint8(0), obj.StorageVersion())
+
+	_, err := obj.Metadata()
+	require.ErrorIs(t, err, object.ErrBadVersion)
+
+	_, err = obj.Data()
+	require.ErrorIs(t, err, object.ErrBadVersion)
+
+	require.False(t, obj.Tombstone())
+}
+
+func TestMalformed(t *testing.T) {
+	obj := object.Object([]byte{0x01})
+
+	_, err := obj.Metadata()
+	require.ErrorIs(t, err, object.ErrMalformed)
+
+	_, err = obj.Data()
+	require.ErrorIs(t, err, object.ErrMalformed)
+
+	require.False(t, obj.Tombstone())
 }
 
 func loadFixture(t *testing.T) (*metadata.Metadata, []byte) {

@@ -18,6 +18,7 @@ const Prefix = "honu"
 // values that are omitted. The Config should be validated in preparation for running
 // the honudb instance to ensure that all server operations work as expected.
 type Config struct {
+	PID          uint32              `required:"true" desc:"the unique process id for this replica"`
 	Maintenance  bool                `default:"false" desc:"if true, the replica will start in maintenance mode"`
 	LogLevel     logger.LevelDecoder `split_words:"true" default:"info" desc:"specify the verbosity of logging (trace, debug, info, warn, error, fatal panic)"`
 	ConsoleLog   bool                `split_words:"true" default:"false" desc:"if true logs colorized human readable output instead of json"`
@@ -25,7 +26,13 @@ type Config struct {
 	ReadTimeout  time.Duration       `split_words:"true" default:"20s" desc:"amount of time allowed to read request headers before server decides the request is too slow"`
 	WriteTimeout time.Duration       `split_words:"true" default:"20s" desc:"maximum amount of time before timing out a write to a response"`
 	IdleTimeout  time.Duration       `split_words:"true" default:"10m" desc:"maximum amount of time to wait for the next request while keep alives are enabled"`
+	Store        StoreConfig
 	processed    bool
+}
+
+type StoreConfig struct {
+	ReadOnly bool   `default:"false" split_words:"false" desc:"open the the underlying data store in read-only mode"`
+	DataPath string `required:"true" split_words:"true" desc:"path to directory where data is stored (created if it doesn't exist)"`
 }
 
 func New() (conf Config, err error) {

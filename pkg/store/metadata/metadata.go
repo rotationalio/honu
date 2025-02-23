@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oklog/ulid/v2"
+	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/ulid"
 )
 
 //===========================================================================
@@ -16,6 +17,8 @@ import (
 //===========================================================================
 
 type Metadata struct {
+	ObjectID     ulid.ULID        `json:"oid" msg:"oid"`
+	CollectionID ulid.ULID        `json:"collection" msg:"collection"`
 	Version      *Version         `json:"version" msg:"version"`
 	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
 	MIME         string           `json:"mime" msg:"mime"`
@@ -35,7 +38,15 @@ type Metadata struct {
 var _ lani.Encodable = &Metadata{}
 var _ lani.Decodable = &Metadata{}
 
+func (o *Metadata) Key() key.Key {
+	// TODO: should the key be cached on the metadata to prevent multiple allocations?
+	return key.New(o.CollectionID, o.ObjectID, &o.Version.Scalar)
+}
+
 func (o *Metadata) Size() (s int) {
+	// ObjectID, CollectionID
+	s += 16 + 16
+
 	// Version size + not nil bool
 	s += 1
 	if o.Version != nil {
@@ -91,6 +102,16 @@ func (o *Metadata) Size() (s int) {
 
 func (o *Metadata) Encode(e *lani.Encoder) (n int, err error) {
 	var m int
+	if m, err = e.EncodeULID(o.ObjectID); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeULID(o.CollectionID); err != nil {
+		return n + m, err
+	}
+	n += m
+
 	if m, err = e.EncodeStruct(o.Version); err != nil {
 		return n + m, err
 	}
@@ -180,6 +201,14 @@ func (o *Metadata) Decode(d *lani.Decoder) (err error) {
 	o.Publisher = &Publisher{}
 	o.Encryption = &Encryption{}
 	o.Compression = &Compression{}
+
+	if o.ObjectID, err = d.DecodeULID(); err != nil {
+		return err
+	}
+
+	if o.CollectionID, err = d.DecodeULID(); err != nil {
+		return err
+	}
 
 	var isNil bool
 	if isNil, err = d.DecodeStruct(o.Version); err != nil {

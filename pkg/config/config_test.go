@@ -10,10 +10,13 @@ import (
 )
 
 var testEnv = map[string]string{
-	"HONU_MAINTENANCE": "true",
-	"HONU_LOG_LEVEL":   "debug",
-	"HONU_CONSOLE_LOG": "true",
-	"HONU_BIND_ADDR":   "127.0.0.1:443",
+	"HONU_PID":             "24",
+	"HONU_MAINTENANCE":     "true",
+	"HONU_LOG_LEVEL":       "debug",
+	"HONU_CONSOLE_LOG":     "true",
+	"HONU_BIND_ADDR":       "127.0.0.1:443",
+	"HONU_STORE_READONLY":  "true",
+	"HONU_STORE_DATA_PATH": "/tmp/honu",
 }
 
 func TestConfig(t *testing.T) {
@@ -26,10 +29,13 @@ func TestConfig(t *testing.T) {
 	require.False(t, conf.IsZero(), "processed config should not be zero valued")
 
 	// Ensure configuration is correctly set from the environment
+	require.Equal(t, uint32(24), conf.PID)
 	require.True(t, conf.Maintenance)
 	require.Equal(t, zerolog.DebugLevel, conf.GetLogLevel())
 	require.True(t, conf.ConsoleLog)
 	require.Equal(t, testEnv["HONU_BIND_ADDR"], conf.BindAddr)
+	require.True(t, conf.Store.ReadOnly)
+	require.Equal(t, testEnv["HONU_STORE_DATA_PATH"], conf.Store.DataPath)
 }
 
 // Returns the current environment for the specified keys, or if no keys are specified

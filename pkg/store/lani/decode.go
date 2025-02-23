@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/oklog/ulid/v2"
+	"go.rtnl.ai/ulid"
 )
 
 // Decoder is similar to a bytes.Reader, allowing a sequential decoding of byte frames,
