@@ -25,7 +25,13 @@ type Config struct {
 	ReadTimeout  time.Duration       `split_words:"true" default:"20s" desc:"amount of time allowed to read request headers before server decides the request is too slow"`
 	WriteTimeout time.Duration       `split_words:"true" default:"20s" desc:"maximum amount of time before timing out a write to a response"`
 	IdleTimeout  time.Duration       `split_words:"true" default:"10m" desc:"maximum amount of time to wait for the next request while keep alives are enabled"`
+	Store        StoreConfig
 	processed    bool
+}
+
+type StoreConfig struct {
+	ReadOnly bool   `default:"false" split_words:"false" desc:"open the the underlying data store in read-only mode"`
+	DataPath string `required:"true" split_words:"true" desc:"path to directory where data is stored (created if it doesn't exist)"`
 }
 
 func New() (conf Config, err error) {

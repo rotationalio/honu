@@ -10,6 +10,7 @@ require (
 	github.com/rotationalio/confire v1.1.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
+	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.2.4
 	github.com/urfave/cli/v2 v2.27.5
 	go.rtnl.ai/ulid v1.1.1
@@ -18,6 +19,7 @@ require (
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect

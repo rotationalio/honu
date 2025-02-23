@@ -38,6 +38,46 @@ func TestObject(t *testing.T) {
 	odata, err := obj.Data()
 	require.NoError(t, err, "could not decode data")
 	require.Equal(t, data, odata, "data not correctly serialized")
+
+	require.False(t, obj.Tombstone(), "object should not be a tombstone")
+}
+
+func TestTombstone(t *testing.T) {
+	meta, _ := loadFixture(t)
+
+	obj, err := object.Marshal(meta, nil)
+	require.NoError(t, err, "could not marshal object")
+
+	require.True(t, obj.Tombstone(), "object should be a tombstone")
+
+	odata, err := obj.Data()
+	require.NoError(t, err, "could not decode data")
+	require.Nil(t, odata, "data not correctly serialized")
+}
+
+func TestNil(t *testing.T) {
+	obj := object.Object(nil)
+	require.Equal(t, uint8(0), obj.StorageVersion())
+
+	_, err := obj.Metadata()
+	require.ErrorIs(t, err, object.ErrBadVersion)
+
+	_, err = obj.Data()
+	require.ErrorIs(t, err, object.ErrBadVersion)
+
+	require.False(t, obj.Tombstone())
+}
+
+func TestMalformed(t *testing.T) {
+	obj := object.Object([]byte{0x01})
+
+	_, err := obj.Metadata()
+	require.ErrorIs(t, err, object.ErrMalformed)
+
+	_, err = obj.Data()
+	require.ErrorIs(t, err, object.ErrMalformed)
+
+	require.False(t, obj.Tombstone())
 }
 
 func loadFixture(t *testing.T) (*metadata.Metadata, []byte) {

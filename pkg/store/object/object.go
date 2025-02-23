@@ -69,7 +69,7 @@ func (o Object) Metadata() (*metadata.Metadata, error) {
 	}
 
 	d, b := o.dataLength()
-	if d < 1 {
+	if d < 0 {
 		return nil, ErrMalformed
 	}
 
@@ -88,11 +88,25 @@ func (o Object) Data() ([]byte, error) {
 	}
 
 	d, b := o.dataLength()
-	if d < 1 {
+	switch {
+	case d < 0:
 		return nil, ErrMalformed
+	case d == 0:
+		return nil, nil
+	default:
+		return o[1+b : 1+b+d], nil
+	}
+}
+
+// If true the object is a tombstone meaning that it only contains metadata and has no
+// associated data. Tombstones are used to indicate that a key has been deleted.
+func (o Object) Tombstone() bool {
+	if o.StorageVersion() != StorageVersion {
+		return false
 	}
 
-	return o[1+b : 1+b+d], nil
+	d, _ := o.dataLength()
+	return d == 0
 }
 
 func (o Object) dataLength() (int, int) {
@@ -103,6 +117,10 @@ func (o Object) dataLength() (int, int) {
 	j := 1 + binary.MaxVarintLen64
 	if j > len(o)-1 {
 		j = len(o) - 1
+	}
+
+	if j < 1 {
+		return -1, -1
 	}
 
 	rl, k := binary.Uvarint(o[1:j])
