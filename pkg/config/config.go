@@ -18,6 +18,7 @@ const Prefix = "honu"
 // values that are omitted. The Config should be validated in preparation for running
 // the honudb instance to ensure that all server operations work as expected.
 type Config struct {
+	PID          uint32              `required:"true" desc:"the unique process id for this replica"`
 	Maintenance  bool                `default:"false" desc:"if true, the replica will start in maintenance mode"`
 	LogLevel     logger.LevelDecoder `split_words:"true" default:"info" desc:"specify the verbosity of logging (trace, debug, info, warn, error, fatal panic)"`
 	ConsoleLog   bool                `split_words:"true" default:"false" desc:"if true logs colorized human readable output instead of json"`

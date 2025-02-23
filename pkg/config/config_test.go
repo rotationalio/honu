@@ -10,6 +10,7 @@ import (
 )
 
 var testEnv = map[string]string{
+	"HONU_PID":             "24",
 	"HONU_MAINTENANCE":     "true",
 	"HONU_LOG_LEVEL":       "debug",
 	"HONU_CONSOLE_LOG":     "true",
@@ -28,6 +29,7 @@ func TestConfig(t *testing.T) {
 	require.False(t, conf.IsZero(), "processed config should not be zero valued")
 
 	// Ensure configuration is correctly set from the environment
+	require.Equal(t, uint32(24), conf.PID)
 	require.True(t, conf.Maintenance)
 	require.Equal(t, zerolog.DebugLevel, conf.GetLogLevel())
 	require.True(t, conf.ConsoleLog)

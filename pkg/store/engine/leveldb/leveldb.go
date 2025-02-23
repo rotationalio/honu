@@ -9,8 +9,9 @@ import (
 	"github.com/rotationalio/honu/pkg/store/iterator"
 	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/rotationalio/honu/pkg/store/object"
-	"github.com/rotationalio/honu/pkg/store/opts"
+
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func Open(conf config.StoreConfig) (engine *Engine, err error) {
@@ -44,7 +45,7 @@ func (e *Engine) DB() *leveldb.DB {
 
 // Returns the name of the engine type
 func (e *Engine) Engine() string {
-	return "honu.LevelDBEngine"
+	return "leveldb"
 }
 
 // Close the database and flush all remaining writes to disk. LevelDB requires a close
@@ -57,60 +58,30 @@ func (e *Engine) Close() error {
 // Implement engine.Store Interface
 //===========================================================================
 
-func (e *Engine) Has(key key.Key, ro *opts.ReadOptions) (exists bool, err error) {
-	// TODO: tombstone handling
-	if exists, err = e.ldb.Has(key[:], nil); err != nil {
+func (e *Engine) Has(key key.Key) (exists bool, err error) {
+	if exists, err = e.ldb.Has(key, nil); err != nil {
 		return exists, Wrap(err)
 	}
 	return exists, nil
 }
 
-func (e *Engine) Get(key key.Key, ro *opts.ReadOptions) (_ object.Object, err error) {
-	// TODO: tombstone handling
+func (e *Engine) Get(key key.Key) (_ object.Object, err error) {
 	var val []byte
-	if val, err = e.ldb.Get(key[:], nil); err != nil {
+	if val, err = e.ldb.Get(key, nil); err != nil {
 		return nil, Wrap(err)
 	}
 	return object.Object(val), nil
 }
 
-func (e *Engine) Put(key key.Key, obj object.Object, wo *opts.WriteOptions) (err error) {
-	// TODO: do we need a transaction here?
-	if wo.GetNoOverwrite() || wo.GetCheckUpdate() {
-		var exists bool
-		if exists, err = e.ldb.Has(key, nil); err != nil {
-			return Wrap(err)
-		}
-
-		if exists && wo.GetNoOverwrite() {
-			return engine.ErrAlreadyExists
-		}
-
-		if !exists && wo.GetCheckUpdate() {
-			return engine.ErrNotFound
-		}
-	}
-
-	if err = e.ldb.Put(key[:], obj[:], nil); err != nil {
+func (e *Engine) Put(key key.Key, obj object.Object) (err error) {
+	if err = e.ldb.Put(key, obj, nil); err != nil {
 		return Wrap(err)
 	}
 	return nil
 }
 
-func (e *Engine) Delete(key key.Key, wo *opts.WriteOptions) (err error) {
-	// TODO: do we need a transaction here?
-	if wo.CheckDelete {
-		var exists bool
-		if exists, err = e.ldb.Has(key, nil); err != nil {
-			return Wrap(err)
-		}
-
-		if !exists {
-			return engine.ErrNotFound
-		}
-	}
-
-	if err = e.ldb.Delete(key[:], nil); err != nil {
+func (e *Engine) Delete(key key.Key) (err error) {
+	if err = e.ldb.Delete(key, nil); err != nil {
 		return Wrap(err)
 	}
 	return nil
@@ -120,8 +91,12 @@ func (e *Engine) Delete(key key.Key, wo *opts.WriteOptions) (err error) {
 // Implement engine.Iterator Interface
 //===========================================================================
 
-func (e *Engine) Iter(prefix []byte, ro *opts.ReadOptions) (_ iterator.Iterator, err error) {
-	return nil, nil
+func (e *Engine) Iter(prefix []byte) (_ iterator.Iterator, err error) {
+	return NewIterator(e.ldb.NewIterator(util.BytesPrefix(prefix), nil)), nil
+}
+
+func (e *Engine) Range(start, limit []byte) (_ iterator.Iterator, err error) {
+	return NewIterator(e.ldb.NewIterator(&util.Range{Start: start, Limit: limit}, nil)), nil
 }
 
 //===========================================================================
@@ -130,6 +105,8 @@ func (e *Engine) Iter(prefix []byte, ro *opts.ReadOptions) (_ iterator.Iterator,
 
 func Wrap(err error) error {
 	switch {
+	case err == nil:
+		return nil
 	case errors.Is(err, leveldb.ErrNotFound):
 		return engine.ErrNotFound
 	case errors.Is(err, leveldb.ErrReadOnly):

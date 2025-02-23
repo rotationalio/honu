@@ -4,7 +4,6 @@ import (
 	"github.com/rotationalio/honu/pkg/store/iterator"
 	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/rotationalio/honu/pkg/store/object"
-	"github.com/rotationalio/honu/pkg/store/opts"
 )
 
 // Engines are the disk storage mechanism that Honu wraps. Users may chose different
@@ -19,15 +18,17 @@ type Engine interface {
 }
 
 // Store is a simple key/value interface that allows for Get, Put, and Delete. Nearly
-// all engines should support the Store interface.
+// all engines should support the Store interface. Note that transactions and options
+// are a higher level construct than engine stores and are provided by the Honu store.
 type Store interface {
-	Has(key.Key, *opts.ReadOptions) (exists bool, err error)
-	Get(key.Key, *opts.ReadOptions) (object.Object, error)
-	Put(key.Key, object.Object, *opts.WriteOptions) error
-	Delete(key.Key, *opts.WriteOptions) error
+	Has(key.Key) (exists bool, err error)
+	Get(key.Key) (object.Object, error)
+	Put(key.Key, object.Object) error
+	Delete(key.Key) error
 }
 
 // Iterator engines allow queries that scan a range of consecutive keys.
 type Iterator interface {
-	Iter(prefix []byte, ro *opts.ReadOptions) (i iterator.Iterator, err error)
+	Iter(prefix []byte) (i iterator.Iterator, err error)
+	Range(start, limit []byte) (i iterator.Iterator, err error)
 }
