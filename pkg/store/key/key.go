@@ -36,38 +36,84 @@ var (
 // maintain lexicographic sorting of the the data.
 type Key []byte
 
-func New(cid, oid ulid.ULID, vers lamport.Scalar) Key {
+// Create a new key for the specified collection and object ID with the given version.
+// If the version is nil, the key is treated as an object prefix and either the latest
+// version of the object is returned or all versions related to the object.
+func New(cid, oid ulid.ULID, vers *lamport.Scalar) Key {
 	key := make([]byte, keySize)
-	copy(key[0:16], cid[:])
-	copy(key[16:32], oid[:])
-	binary.BigEndian.PutUint64(key[32:40], vers.VID)
-	binary.BigEndian.PutUint32(key[40:44], vers.PID)
-	key[44] = keyVersion
+	key[0] = keyVersion
+	copy(key[1:17], cid[:])
+	copy(key[17:33], oid[:])
+	if vers != nil {
+		binary.BigEndian.PutUint64(key[33:41], vers.VID)
+		binary.BigEndian.PutUint32(key[41:45], vers.PID)
+	}
 	return Key(key)
 }
 
+// Returns the collection ID encoded in the key as a ulid.
 func (k Key) CollectionID() ulid.ULID {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
-	return ulid.ULID(k[0:16])
+	return ulid.ULID(k[1:17])
 }
 
+// Returns the object ID encoded in the key as a ulid.
 func (k Key) ObjectID() ulid.ULID {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
-	return ulid.ULID(k[16:32])
+	return ulid.ULID(k[17:33])
 }
 
+// Returns the version specified by the key if any (if no version is specified then
+// returns a zero valued version rather than nil).
 func (k Key) Version() lamport.Scalar {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
 	return lamport.Scalar{
-		VID: binary.BigEndian.Uint64(k[32:40]),
-		PID: binary.BigEndian.Uint32(k[40:44]),
+		VID: binary.BigEndian.Uint64(k[33:41]),
+		PID: binary.BigEndian.Uint32(k[41:45]),
 	}
+}
+
+// ObjectPrefix returns the collection and object IDs without any version information.
+func (k Key) ObjectPrefix() []byte {
+	if err := k.Check(); err != nil {
+		panic(err)
+	}
+	return k[0:33]
+}
+
+// ObjectLimit returns a byte slice with the collection and object ID with the last
+// byte incremented by one. This can be used to create a range query for all versions
+// of an object where the start is the ObjectPrefix.
+func (k Key) ObjectLimit() []byte {
+	if err := k.Check(); err != nil {
+		panic(err)
+	}
+	limit := make([]byte, 33)
+	copy(limit, k[0:33])
+	limit[32]++
+	return limit
+}
+
+// HasVersion checks if there is any version information or if only the object prefix
+// is specified by the key. If false, then the Version() method is guaranteed to return
+// a zero valued version. If true, then there is a specific version described by the key.
+func (k Key) HasVersion() bool {
+	if err := k.Check(); err != nil {
+		panic(err)
+	}
+
+	for i := keySize - 1; i > 32; i-- {
+		if k[i] != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (k Key) Check() error {
@@ -75,7 +121,7 @@ func (k Key) Check() error {
 		return ErrBadSize
 	}
 
-	if k[44] != keyVersion {
+	if k[0] != keyVersion {
 		return ErrBadVersion
 	}
 

@@ -40,7 +40,7 @@ var _ lani.Decodable = &Metadata{}
 
 func (o *Metadata) Key() key.Key {
 	// TODO: should the key be cached on the metadata to prevent multiple allocations?
-	return key.New(o.CollectionID, o.ObjectID, o.Version.Scalar)
+	return key.New(o.CollectionID, o.ObjectID, &o.Version.Scalar)
 }
 
 func (o *Metadata) Size() (s int) {

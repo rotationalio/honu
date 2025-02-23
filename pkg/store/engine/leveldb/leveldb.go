@@ -44,7 +44,7 @@ func (e *Engine) DB() *leveldb.DB {
 
 // Returns the name of the engine type
 func (e *Engine) Engine() string {
-	return "leveldb"
+	return "honu.LevelDBEngine"
 }
 
 // Close the database and flush all remaining writes to disk. LevelDB requires a close
