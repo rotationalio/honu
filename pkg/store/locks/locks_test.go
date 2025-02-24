@@ -70,33 +70,48 @@ func TestContention(t *testing.T) {
 }
 
 func BenchmarkLocks(b *testing.B) {
-	mu := sync.Mutex{}
 	keys := make([][]byte, 128)
-	for i := 0; i < 1024; i++ {
+	for i := 0; i < 128; i++ {
 		keys[i] = RandomKey()
 	}
 
-	runContention := func() {
+	runContention := func(f func([]byte)) {
 		wg := sync.WaitGroup{}
 		wg.Add(1024)
 		for i := 0; i < 1024; i++ {
 			go func() {
 				defer wg.Done()
 				for j := 0; j < 512; j++ {
-					k := keys[random.IntN(1024)]
-					mu.Lock()
-					mu.Unlock()
+					k := keys[random.IntN(128)]
+					f(k)
 				}
 			}()
 		}
 		wg.Wait()
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		mu.Lock()
-		mu.Unlock()
-	}
+	b.Run("Mutex", func(b *testing.B) {
+		var mu sync.Mutex
+		for i := 0; i < b.N; i++ {
+			runContention(func(k []byte) {
+				mu.Lock()
+				_ = len(k)
+				mu.Unlock()
+			})
+		}
+	})
+
+	b.Run("KeyLock", func(b *testing.B) {
+		mu := locks.New(128)
+		for i := 0; i < b.N; i++ {
+			runContention(func(k []byte) {
+				mu.Lock(k)
+				_ = len(k)
+				mu.Unlock(k)
+			})
+		}
+	})
+
 }
 
 func RandomKey() []byte {
