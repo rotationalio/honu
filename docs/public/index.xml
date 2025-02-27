@@ -6,14 +6,13 @@
     <description>Recent content in HonuDB Documentation on HonuDB</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 27 Feb 2025 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Introducing HonuDB</title>
       <link>http://localhost:1313/posts/2025-02-27-introducing-honudb/</link>
       <pubDate>Thu, 27 Feb 2025 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/posts/2025-02-27-introducing-honudb/</guid>
-      <description>&lt;p&gt;Why does the world need yet another database?&lt;/p&gt;</description>
+      <description>&lt;p&gt;Why does the world need yet another database? In short, because no one database can support all use cases all the time. HonuDB is for machine learning engineers, a group that needs data management more than most, but is often overlooked as users for database management systems.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

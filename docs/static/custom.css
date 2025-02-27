@@ -47,8 +47,8 @@
 }
 @media (prefers-color-scheme: light) {
   :root {
-    --header-background: #4ec58a;
-    --header-font-color: #ffffff;
+    --header-background: #fdfcfa;
+    --header-font-color: #41A392;
 
     --body-background: #ffffff;
     --body-font-color: #343a40;
@@ -76,7 +76,7 @@
 
     --control-icons: #b2bac1;
 
-    --footer-background: #112b3c;
+    --footer-background: #2D5A80;
     --footer-font-color: #ffffff;
     --footer-link-color: #ffcc5c;
     --footer-link-color-visited: #ffcc5c;

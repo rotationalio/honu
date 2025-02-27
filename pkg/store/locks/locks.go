@@ -13,6 +13,14 @@ import (
 
 const DefaultCount = 1024
 
+type Keys interface {
+	Lock([]byte)
+	Unlock([]byte)
+	RLock([]byte)
+	RUnlock([]byte)
+	Index([]byte) int
+}
+
 // KeyLocks are used to prevent concurrent writes to the same key and to allow multiple
 // concurrent reads using a sync.RWMutex. The keys are distributed across a fixed number
 // to preven unbounded memory growth; so it is possible that two different keys will
