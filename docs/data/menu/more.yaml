@@ -1,0 +1,13 @@
+---
+more:
+  - name: News
+    ref: "/posts"
+    icon: "gdoc_gitea"
+  - name: Releases
+    ref: "https://github.com/rotationalio/honu/releases"
+    external: true
+    icon: "gdoc_download"
+  - name: View Source
+    ref: "https://github.com/rotationalio/honu"
+    external: true
+    icon: "gdoc_github"
