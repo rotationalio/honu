@@ -1,4 +1,4 @@
 User-agent: *
-Allow: /
+Disallow: /tags/*
 
 Sitemap: https://honudb.dev/sitemap.xml
