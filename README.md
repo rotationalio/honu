@@ -1,7 +1,7 @@
 # Honu
 
 [![Go Report Card](https://goreportcard.com/badge/go.rtnl.ai/honu)](https://goreportcard.com/report/go.rtnl.ai/honu)
-![GitHub Actions CI](https://go.rtnl.ai/honu/actions/workflows/tests.yaml/badge.svg?branch=main)
+![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/tests.yaml/badge.svg?branch=main)
 
 The Honu Database is an eventually consistent replicated document database that intended for large systems that are distributed globally. Honu uses smart anti-entropy replication to quickly replicate collections across multiple nodes.
 
@@ -28,9 +28,3 @@ BenchmarkSerialization/Large/Decode-10  	  467475	      2736 ns/op	    2334 B/op
 BenchmarkSerialization/XLarge/Encode-10 	    7250	    138013 ns/op	   4926099 bytes	 3247592 B/op	       2 allocs/op
 BenchmarkSerialization/XLarge/Decode-10 	  407468	      2749 ns/op	    2333 B/op	      62 allocs/op
 ```
-
-![Benchmarks](./docs/static/img/serialization-benchmark.png)
-
-## Documentation
-
-The docs are set up using the [Cinder](https://sourcefoundry.org/cinder/) MkDocs theme, ported (somewhat) into Hugo using the [Cinder GitHub repository](https://github.com/chrissimpkins/cinder). A lot of work still needs to be done to get these docs ready for prime time, but it serves as a quick placeholder while we're working on the database.
