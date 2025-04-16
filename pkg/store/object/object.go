@@ -3,9 +3,9 @@ package object
 import (
 	"encoding/binary"
 
-	"github.com/rotationalio/honu/pkg/store/key"
-	"github.com/rotationalio/honu/pkg/store/lani"
-	"github.com/rotationalio/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/store/metadata"
 )
 
 // A compatibility indicator, increment this number any time the underlying storage is

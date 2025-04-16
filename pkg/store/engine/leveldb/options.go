@@ -1,9 +1,9 @@
 package leveldb
 
 import (
-	"github.com/rotationalio/honu/pkg/config"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"go.rtnl.ai/honu/pkg/config"
 )
 
 // Returns the default configuration for the underlying storage engine configured

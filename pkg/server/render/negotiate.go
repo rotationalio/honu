@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rotationalio/honu/pkg/api/v1"
-	"github.com/rotationalio/honu/pkg/mime"
 	"github.com/tinylib/msgp/msgp"
+	"go.rtnl.ai/honu/pkg/api/v1"
+	"go.rtnl.ai/honu/pkg/mime"
 )
 
 const (

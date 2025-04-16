@@ -6,8 +6,8 @@ import (
 	"sort"
 	"testing"
 
-	. "github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/stretchr/testify/require"
+	. "go.rtnl.ai/honu/pkg/store/lamport"
 )
 
 func TestScalar(t *testing.T) {

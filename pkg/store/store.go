@@ -1,11 +1,11 @@
 package store
 
 import (
-	"github.com/rotationalio/honu/pkg/config"
-	"github.com/rotationalio/honu/pkg/store/engine"
-	"github.com/rotationalio/honu/pkg/store/engine/leveldb"
-	"github.com/rotationalio/honu/pkg/store/lamport"
-	"github.com/rotationalio/honu/pkg/store/locks"
+	"go.rtnl.ai/honu/pkg/config"
+	"go.rtnl.ai/honu/pkg/store/engine"
+	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
+	"go.rtnl.ai/honu/pkg/store/lamport"
+	"go.rtnl.ai/honu/pkg/store/locks"
 )
 
 // Store implements local database functionality for interaction with objects and their

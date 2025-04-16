@@ -1,4 +1,4 @@
-module github.com/rotationalio/honu
+module go.rtnl.ai/honu
 
 go 1.23.3
 

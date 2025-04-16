@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rotationalio/honu/pkg/store/key"
-	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
 

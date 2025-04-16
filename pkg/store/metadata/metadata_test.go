@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/store/lani"
-	. "github.com/rotationalio/honu/pkg/store/metadata"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/store/lani"
+	. "go.rtnl.ai/honu/pkg/store/metadata"
 )
 
 func TestMetadataSerialization(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/rotationalio/honu/pkg/server/middleware"
+	"go.rtnl.ai/honu/pkg/server/middleware"
 )
 
 // Sets up the server's middleware and routes.

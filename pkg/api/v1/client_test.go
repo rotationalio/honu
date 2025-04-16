@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/api/v1"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/api/v1"
 )
 
 var (

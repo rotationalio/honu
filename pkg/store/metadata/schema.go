@@ -3,7 +3,7 @@ package metadata
 import (
 	"encoding/binary"
 
-	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/store/lani"
 )
 
 //===========================================================================

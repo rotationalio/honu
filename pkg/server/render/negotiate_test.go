@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/server/render"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/server/render"
 )
 
 func TestParseAccept(t *testing.T) {

@@ -40,7 +40,7 @@ jobs:
       GOTEST_GITHUB_ACTIONS: 1
     defaults:
       run:
-        working-directory: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+        working-directory: ${{ env.GOPATH }}/src/go.rtnl.ai/honu
     steps:
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -58,7 +58,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          path: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+          path: ${{ env.GOPATH }}/src/go.rtnl.ai/honu
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
@@ -85,7 +85,7 @@ jobs:
       GOBIN: ${{ github.workspace }}/go/bin
     defaults:
       run:
-        working-directory: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+        working-directory: ${{ env.GOPATH }}/src/go.rtnl.ai/honu
     steps:
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -103,7 +103,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          path: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+          path: ${{ env.GOPATH }}/src/go.rtnl.ai/honu
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3

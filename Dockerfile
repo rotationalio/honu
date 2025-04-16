@@ -16,7 +16,7 @@ ARG TARGETARCH
 RUN update-ca-certificates
 
 # Use modules for dependencies
-WORKDIR $GOPATH/src/github.com/rotationalio/honu
+WORKDIR $GOPATH/src/go.rtnl.ai/honu
 
 COPY go.mod .
 COPY go.sum .
@@ -31,7 +31,7 @@ COPY . .
 
 # Build binary
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-    -ldflags="-X 'github.com/rotationalio/honu/pkg.GitVersion=${GIT_REVISION}'" \
+    -ldflags="-X 'go.rtnl.ai/honu/pkg.GitVersion=${GIT_REVISION}'" \
     -o /go/bin/honudb \
     ./cmd/honudb
 

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/store/locks"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/store/locks"
 )
 
 func TestLocking(t *testing.T) {

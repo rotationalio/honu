@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rotationalio/honu/pkg/store/lamport"
-	"github.com/rotationalio/honu/pkg/store/metadata"
-	"github.com/rotationalio/honu/pkg/store/object"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/store/lamport"
+	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )
 

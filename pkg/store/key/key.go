@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/rotationalio/honu/pkg/store/lamport"
+	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/ulid"
 )
 

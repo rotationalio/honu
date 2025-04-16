@@ -1,8 +1,8 @@
 package iterator
 
 import (
-	"github.com/rotationalio/honu/pkg/store/key"
-	"github.com/rotationalio/honu/pkg/store/object"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/object"
 )
 
 // Empty creates an empty iterator that returns nothing. The err parameter

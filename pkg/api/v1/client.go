@@ -14,8 +14,8 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/google/go-querystring/query"
-	"github.com/rotationalio/honu/pkg/api/v1/credentials"
 	"github.com/rs/zerolog/log"
+	"go.rtnl.ai/honu/pkg/api/v1/credentials"
 	"go.rtnl.ai/ulid"
 )
 

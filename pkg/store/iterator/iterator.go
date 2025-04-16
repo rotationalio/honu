@@ -3,8 +3,8 @@ package iterator
 import (
 	"errors"
 
-	"github.com/rotationalio/honu/pkg/store/key"
-	"github.com/rotationalio/honu/pkg/store/object"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/object"
 )
 
 // Standard iterator errors that may be returned for error type checking.

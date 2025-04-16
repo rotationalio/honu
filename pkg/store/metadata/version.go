@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/rotationalio/honu/pkg/store/lamport"
-	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/store/lamport"
+	"go.rtnl.ai/honu/pkg/store/lani"
 )
 
 //===========================================================================

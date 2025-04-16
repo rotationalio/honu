@@ -12,12 +12,12 @@ jobs:
       GOPATH: ${{ github.workspace }}/go
     defaults:
       run:
-        working-directory: ${{ env.GOPATH }}/src/github.com/rotationalio/honu/docs
+        working-directory: ${{ env.GOPATH }}/src/go.rtnl.ai/honu/docs
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          path: ${{ env.GOPATH }}/src/github.com/rotationalio/honu
+          path: ${{ env.GOPATH }}/src/go.rtnl.ai/honu
           submodules: true
           fetch-depth: 0
 
@@ -36,5 +36,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ${{ env.GOPATH }}/src/github.com/rotationalio/honu/docs/public
+          publish_dir: ${{ env.GOPATH }}/src/go.rtnl.ai/honu/docs/public
           cname: honudb.dev

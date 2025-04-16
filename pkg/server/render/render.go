@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rotationalio/honu/pkg/mime"
 	"github.com/tinylib/msgp/msgp"
+	"go.rtnl.ai/honu/pkg/mime"
 )
 
 // Header keys for http requests and responses

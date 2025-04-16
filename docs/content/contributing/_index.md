@@ -9,10 +9,10 @@ Database development is notoriously difficult -- but hopefully contributing to d
 
 Beyond the code, there are many ways to contribute:
 
-- Submit a feature request or bug report on our [GitHub Issues](https://github.com/rotationalio/honu/issues).
+- Submit a feature request or bug report on our [GitHub Issues](https://go.rtnl.ai/honu/issues).
 - Add to the documentation or help us with our website, [honudb.dev](https://honudb.dev).
 - Write a blog post, tweet, or share our project with others.
-- Star our [https://github.com/rotationalio/honu] on GitHub!
+- Star our [https://go.rtnl.ai/honu] on GitHub!
 - Translate our documentation into another language.
 - Write unit or integration tests for Honu.
 - Tell us about how you're using HonuDB!

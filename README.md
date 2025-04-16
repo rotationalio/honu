@@ -1,7 +1,7 @@
 # Honu
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/rotationalio/honu)](https://goreportcard.com/report/github.com/rotationalio/honu)
-![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/tests.yaml/badge.svg?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/go.rtnl.ai/honu)](https://goreportcard.com/report/go.rtnl.ai/honu)
+![GitHub Actions CI](https://go.rtnl.ai/honu/actions/workflows/tests.yaml/badge.svg?branch=main)
 
 The Honu Database is an eventually consistent replicated document database that intended for large systems that are distributed globally. Honu uses smart anti-entropy replication to quickly replicate collections across multiple nodes.
 
@@ -17,7 +17,7 @@ Protocol Buffers are a compact, cross-language compatible data serialization for
 ```
 goos: darwin
 goarch: arm64
-pkg: github.com/rotationalio/honu/pkg/store/object
+pkg: go.rtnl.ai/honu/pkg/store/object
 cpu: Apple M1 Max
 BenchmarkSerialization/Small/Encode-10  	  578818	      1768 ns/op	      4520 bytes	    4487 B/op	       2 allocs/op
 BenchmarkSerialization/Small/Decode-10  	  402945	      2686 ns/op	    2341 B/op	      62 allocs/op

@@ -8,9 +8,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/store/key"
-	"github.com/rotationalio/honu/pkg/store/lamport"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/ulid"
 )
 

@@ -11,10 +11,10 @@ const (
 	VersionReleaseNumber = 1
 )
 
-// Set the GitVersion via -ldflags="-X 'github.com/rotationalio/honu/pkg.GitVersion=$(git rev-parse --short HEAD)'"
+// Set the GitVersion via -ldflags="-X 'go.rtnl.ai/honu/pkg.GitVersion=$(git rev-parse --short HEAD)'"
 var GitVersion string
 
-// Set the BuildDate via -ldflags="-X github.com/rotationalio/honu/pkg.BuildDate=YYYY-MM-DD"
+// Set the BuildDate via -ldflags="-X go.rtnl.ai/honu/pkg.BuildDate=YYYY-MM-DD"
 var BuildDate string
 
 // Version returns the semantic version for the current build.

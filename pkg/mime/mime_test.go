@@ -4,8 +4,8 @@ import (
 	"mime"
 	"testing"
 
-	. "github.com/rotationalio/honu/pkg/mime"
 	"github.com/stretchr/testify/require"
+	. "go.rtnl.ai/honu/pkg/mime"
 )
 
 func TestStringParse(t *testing.T) {

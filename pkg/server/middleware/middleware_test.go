@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
-	. "github.com/rotationalio/honu/pkg/server/middleware"
 	"github.com/stretchr/testify/require"
+	. "go.rtnl.ai/honu/pkg/server/middleware"
 )
 
 func MakeTestMiddleware(name string, abort bool, calls *Calls) Middleware {

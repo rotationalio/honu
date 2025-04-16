@@ -4,9 +4,9 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/store/iterator"
-	"github.com/rotationalio/honu/pkg/store/key"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/store/iterator"
+	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/ulid"
 )
 

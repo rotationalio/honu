@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/config"
 )
 
 var testEnv = map[string]string{

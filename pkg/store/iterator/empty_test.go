@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	. "github.com/rotationalio/honu/pkg/store/iterator"
 	"github.com/stretchr/testify/require"
+	. "go.rtnl.ai/honu/pkg/store/iterator"
 )
 
 func TestEmptyIterator(t *testing.T) {

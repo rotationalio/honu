@@ -5,9 +5,9 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/rotationalio/honu/pkg"
-	"github.com/rotationalio/honu/pkg/config"
-	"github.com/rotationalio/honu/pkg/server"
+	"go.rtnl.ai/honu/pkg"
+	"go.rtnl.ai/honu/pkg/config"
+	"go.rtnl.ai/honu/pkg/server"
 
 	"github.com/joho/godotenv"
 	confire "github.com/rotationalio/confire/usage"

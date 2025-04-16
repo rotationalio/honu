@@ -10,10 +10,10 @@ geekdocBreadcrumb: true
 <!-- markdownlint-capture -->
 <!-- markdownlint-disable MD033 -->
 
-<span class="badge-placeholder">[![Build Status](https://github.com/rotationalio/honu/actions/workflows/tests.yaml/badge.svg)](https://github.com/rotationalio/honu/actions/workflows/tests.yaml)</span>
-<span class="badge-placeholder">[![GitHub Release](https://img.shields.io/github/v/release/rotationalio/honu)](https://github.com/rotationalio/honu/releases/latest)</span>
-<span class="badge-placeholder">[![GitHub Contributors](https://img.shields.io/github/contributors/rotationalio/honu)](https://github.com/rotationalio/honu/graphs/contributors)</span>
-<span class="badge-placeholder">[![License: BSD3](https://img.shields.io/github/license/rotationalio/honu)](https://github.com/rotationalio/honu/blob/main/LICENSE)</span>
+<span class="badge-placeholder">[![Build Status](https://go.rtnl.ai/honu/actions/workflows/tests.yaml/badge.svg)](https://go.rtnl.ai/honu/actions/workflows/tests.yaml)</span>
+<span class="badge-placeholder">[![GitHub Release](https://img.shields.io/github/v/release/rotationalio/honu)](https://go.rtnl.ai/honu/releases/latest)</span>
+<span class="badge-placeholder">[![GitHub Contributors](https://img.shields.io/github/contributors/rotationalio/honu)](https://go.rtnl.ai/honu/graphs/contributors)</span>
+<span class="badge-placeholder">[![License: BSD3](https://img.shields.io/github/license/rotationalio/honu)](https://go.rtnl.ai/honu/blob/main/LICENSE)</span>
 
 <!-- markdownlint-restore -->
 

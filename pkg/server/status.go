@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/rotationalio/honu/pkg"
-	"github.com/rotationalio/honu/pkg/api/v1"
-	"github.com/rotationalio/honu/pkg/server/render"
+	"go.rtnl.ai/honu/pkg"
+	"go.rtnl.ai/honu/pkg/api/v1"
+	"go.rtnl.ai/honu/pkg/server/render"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/rotationalio/honu/pkg/store/lani"
 	"github.com/stretchr/testify/require"
+	. "go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
 

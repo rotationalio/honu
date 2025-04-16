@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rotationalio/honu/pkg/logger"
+	"go.rtnl.ai/honu/pkg/logger"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

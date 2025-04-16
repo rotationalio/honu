@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/api/v1"
-	"github.com/rotationalio/honu/pkg/mime"
-	"github.com/rotationalio/honu/pkg/server/render"
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/api/v1"
+	"go.rtnl.ai/honu/pkg/mime"
+	"go.rtnl.ai/honu/pkg/server/render"
 )
 
 func TestText(t *testing.T) {

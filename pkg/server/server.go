@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/rotationalio/honu/pkg/config"
-	"github.com/rotationalio/honu/pkg/logger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.rtnl.ai/honu/pkg/config"
+	"go.rtnl.ai/honu/pkg/logger"
 )
 
 func init() {

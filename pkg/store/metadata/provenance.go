@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 
-	"github.com/rotationalio/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
 

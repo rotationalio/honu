@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rotationalio/honu/pkg/logger"
+	"go.rtnl.ai/honu/pkg/logger"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
