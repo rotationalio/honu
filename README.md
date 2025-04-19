@@ -1,7 +1,7 @@
 # Honu
 
 [![Go Report Card](https://goreportcard.com/badge/go.rtnl.ai/honu)](https://goreportcard.com/report/go.rtnl.ai/honu)
-![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/tests.yaml/badge.svg?branch=main)
+[![GitHub Actions CI](https://github.com/rotationalio/honu/actions/workflows/tests.yaml/badge.svg?branch=main)](https://github.com/rotationalio/honu/actions/workflows/tests.yaml)
 
 The Honu Database is an eventually consistent replicated document database that intended for large systems that are distributed globally. Honu uses smart anti-entropy replication to quickly replicate collections across multiple nodes.
 

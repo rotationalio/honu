@@ -26,11 +26,11 @@ var (
 
 // Keys are used to store objects in the underlying key/value store. It is a 45 byte key
 // that is composed of 16 byte object and collection IDs and a 4 byte uint32 and 8 byte
-// uint64 representing the lamport scalar version number. The last byte indicates the
+// uint64 representing the lamport scalar version number. The first byte indicates the
 // key version and marshaling compatibility. There are no separator characters
 // between the components of the key since all components are a fixed length.
 //
-// A key is structured as: collection::oid::vid::pid::keyVersion
+// A key is structured as keyVersion::collection::oid::vid::pid
 //
 // Note that the version is serialized differently than the lamport scalar in order to
 // maintain lexicographic sorting of the the data.
