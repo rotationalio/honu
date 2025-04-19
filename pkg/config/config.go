@@ -31,8 +31,9 @@ type Config struct {
 }
 
 type StoreConfig struct {
-	ReadOnly bool   `default:"false" split_words:"false" desc:"open the the underlying data store in read-only mode"`
-	DataPath string `required:"true" split_words:"true" desc:"path to directory where data is stored (created if it doesn't exist)"`
+	ReadOnly    bool   `default:"false" split_words:"false" desc:"open the the underlying data store in read-only mode"`
+	DataPath    string `required:"true" split_words:"true" desc:"path to directory where data is stored (created if it doesn't exist)"`
+	Concurrency uint32 `default:"1024" desc:"number of concurrent read/write locks allowed for managing transactions"`
 }
 
 func New() (conf Config, err error) {

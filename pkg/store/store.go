@@ -31,7 +31,7 @@ func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
 		Clock: lamport.New(conf.PID),
 		pid:   lamport.PID(conf.PID),
-		mu:    locks.New(locks.DefaultCount),
+		mu:    locks.New(conf.Store.Concurrency),
 	}
 
 	if s.db, err = leveldb.Open(conf.Store); err != nil {
