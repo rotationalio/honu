@@ -26,6 +26,10 @@ type Keys interface {
 	Unlock(...[]byte)
 	RLock(...[]byte)
 	RUnlock(...[]byte)
+	LockAll()
+	UnlockAll()
+	RLockAll()
+	RUnlockAll()
 	Index([]byte) int
 	Indices(...[]byte) []int
 }
@@ -75,7 +79,6 @@ func New(nlocks uint32) *KeyLock {
 func (k *KeyLock) Lock(keys ...[]byte) {
 	switch len(keys) {
 	case 0:
-		// TODO: should a no key lock allow locking the entire keyspace?
 		return
 	case 1:
 		k.locks[crc32.Checksum(keys[0], k.table)%k.count].Lock()
@@ -121,7 +124,6 @@ func (k *KeyLock) Unlock(keys ...[]byte) {
 func (k *KeyLock) RLock(keys ...[]byte) {
 	switch len(keys) {
 	case 0:
-		// TODO: should a no key lock allow read locking the entire keyspace?
 		return
 	case 1:
 		k.locks[crc32.Checksum(keys[0], k.table)%k.count].RLock()
@@ -186,4 +188,42 @@ func (k *KeyLock) Indices(keys ...[]byte) (out []int) {
 		e++
 	}
 	return out[:e]
+}
+
+// Sequentially locks all indices in the KeyLock. This will prevent any other process
+// from acquiring any locks at all. Because locks are acquired with the highest index
+// first, this will not deadlock with any other goroutine that is acquiring locks in
+// the same order.
+func (k *KeyLock) LockAll() {
+	for i := len(k.locks) - 1; i >= 0; i-- {
+		k.locks[i].Lock()
+	}
+}
+
+// Sequentially unlocks all indices in the KeyLock. This method does not detect if a
+// lock is unlocked and will panic if it is not; therefore this method should only be
+// called after LockAll() and not as a method to release any held locks.
+func (k *KeyLock) UnlockAll() {
+	for i := len(k.locks) - 1; i >= 0; i-- {
+		k.locks[i].Unlock()
+	}
+}
+
+// Sequentially read locks all indices in the KeyLock. This will prevent any other
+// process from acquiring any write locks. Because locks are acquired with the highest
+// index first, this will not deadlock with any other goroutine that is acquiring
+// locks in the same order.
+func (k *KeyLock) RLockAll() {
+	for i := len(k.locks) - 1; i >= 0; i-- {
+		k.locks[i].RLock()
+	}
+}
+
+// Sequentially read unlocks all indices in the KeyLock. This method does not detect if
+// a lock is unlocked and will panic if it is not; therefore this method should only be
+// called after ReadLockAll() and not as a method to release any held locks.
+func (k *KeyLock) RUnlockAll() {
+	for i := len(k.locks) - 1; i >= 0; i-- {
+		k.locks[i].RUnlock()
+	}
 }
