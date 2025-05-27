@@ -41,27 +41,23 @@ func (s *Server) Status(w http.ResponseWriter, r *http.Request, _ httprouter.Par
 // Healthz is used to alert k8s to the health/liveness status of the server.
 func (s *Server) Healthz(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	s.RLock()
-	healthy := s.healthy
-	s.RUnlock()
+	defer s.RUnlock()
 
-	if !healthy {
+	if !s.healthy {
 		render.Text(http.StatusServiceUnavailable, w, serverStatusUnhealthy)
 		return
 	}
-
 	render.Text(http.StatusOK, w, serverStatusOK)
 }
 
 // Readyz is used to alert k8s to the readiness status of the server.
 func (s *Server) Readyz(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	s.RLock()
-	ready := s.ready
-	s.RUnlock()
+	defer s.RUnlock()
 
-	if !ready {
+	if !s.ready {
 		render.Text(http.StatusServiceUnavailable, w, serverStatusNotReady)
 		return
 	}
-
 	render.Text(http.StatusOK, w, serverStatusOK)
 }

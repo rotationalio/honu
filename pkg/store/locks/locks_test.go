@@ -65,6 +65,22 @@ func TestLocking(t *testing.T) {
 		mu.RUnlock(k1, k2, k3)
 		mu.RUnlock(k1, k2, k3)
 	})
+
+	t.Run("All", func(t *testing.T) {
+		mu.LockAll()
+		mu.UnlockAll()
+
+		mu.RLockAll()
+		mu.RLockAll()
+		mu.RLockAll()
+
+		mu.RUnlockAll()
+		mu.RUnlockAll()
+		mu.RUnlockAll()
+
+		mu.LockAll()
+		mu.UnlockAll()
+	})
 }
 
 func TestContention(t *testing.T) {
@@ -193,6 +209,37 @@ func TestContention(t *testing.T) {
 					mu.RLock(ks...)
 					time.Sleep(time.Duration(random.IntN(readsleep)) * time.Microsecond)
 					mu.RUnlock(ks...)
+				}
+			}()
+		}
+
+		wg.Wait()
+	})
+
+	t.Run("All", func(t *testing.T) {
+		mu := locks.New(uint32(locksize))
+		wg := sync.WaitGroup{}
+
+		wg.Add(2)
+		for range 2 {
+			go func() {
+				defer wg.Done()
+				for range 8 {
+					mu.LockAll()
+					time.Sleep(time.Duration(random.IntN(writesleep)) * time.Microsecond)
+					mu.UnlockAll()
+				}
+			}()
+		}
+
+		wg.Add(16)
+		for range 16 {
+			go func() {
+				defer wg.Done()
+				for range 32 {
+					mu.RLockAll()
+					time.Sleep(time.Duration(random.IntN(readsleep)) * time.Microsecond)
+					mu.RUnlockAll()
 				}
 			}()
 		}
