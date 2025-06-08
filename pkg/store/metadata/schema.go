@@ -1,8 +1,6 @@
 package metadata
 
 import (
-	"encoding/binary"
-
 	"go.rtnl.ai/honu/pkg/store/lani"
 )
 
@@ -20,9 +18,12 @@ type SchemaVersion struct {
 var _ lani.Encodable = &SchemaVersion{}
 var _ lani.Decodable = &SchemaVersion{}
 
+// The static size of a zero valued SchemaVersion object; see TestSchemaVersionSize for details.
+const schemaVersionStaticSize = 25
+
 func (o *SchemaVersion) Size() (s int) {
-	s += len([]byte(o.Name)) + binary.MaxVarintLen64
-	s += 3 * binary.MaxVarintLen32
+	s = schemaVersionStaticSize
+	s += len([]byte(o.Name))
 	return
 }
 

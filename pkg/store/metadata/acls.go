@@ -17,9 +17,10 @@ type AccessControl struct {
 var _ lani.Encodable = &AccessControl{}
 var _ lani.Decodable = &AccessControl{}
 
+const accessControlStaticSize = 17 // 16 bytes for ULID + 1 byte for permissions
+
 func (o *AccessControl) Size() int {
-	// ULID + 1 byte for the permissions
-	return 17
+	return accessControlStaticSize
 }
 
 func (o *AccessControl) Encode(e *lani.Encoder) (n int, err error) {
