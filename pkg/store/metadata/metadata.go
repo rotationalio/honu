@@ -2,9 +2,6 @@ package metadata
 
 import (
 	"encoding/binary"
-	"encoding/json"
-	"fmt"
-	"strings"
 	"time"
 
 	"go.rtnl.ai/honu/pkg/store/key"
@@ -33,37 +30,40 @@ type Metadata struct {
 	Flags        uint8            `json:"flags" msg:"flags"`
 	Created      time.Time        `json:"created" msg:"created"`
 	Modified     time.Time        `json:"modified" msg:"modified"`
+	key          key.Key          `json:"-" msg:"-"`
 }
 
 var _ lani.Encodable = &Metadata{}
 var _ lani.Decodable = &Metadata{}
 
 func (o *Metadata) Key() key.Key {
-	// TODO: should the key be cached on the metadata to prevent multiple allocations?
-	return key.New(o.CollectionID, o.ObjectID, &o.Version.Scalar)
+	if o.key == nil {
+		o.key = key.New(o.CollectionID, o.ObjectID, &o.Version.Scalar)
+	}
+	return o.key
 }
 
-func (o *Metadata) Size() (s int) {
-	// ObjectID, CollectionID
-	s += 16 + 16
+// The static size of a zero valued Metadata object; see TestMetadataSize for details.
+const metadataStaticSize = 121
 
-	// Version size + not nil bool
-	s += 1
+func (o *Metadata) Size() (s int) {
+	s = metadataStaticSize
+
+	// Version size
 	if o.Version != nil {
 		s += o.Version.Size()
 	}
 
-	// SchemaVersion size + not nil bool
-	s += 1
+	// SchemaVersion size
 	if o.Schema != nil {
 		s += o.Schema.Size()
 	}
 
-	s += len([]byte(o.MIME)) + binary.MaxVarintLen64
-	s += 16 + 16 + 1 // Owner, Group, Permissions
+	// Length of MIME string
+	s += len([]byte(o.MIME))
 
-	// ACL
-	s += (len(o.ACL) + 1) * binary.MaxVarintLen64
+	// ACL List
+	s += len(o.ACL) * binary.MaxVarintLen64
 	for _, ac := range o.ACL {
 		s += 1
 		if ac != nil {
@@ -71,32 +71,27 @@ func (o *Metadata) Size() (s int) {
 		}
 	}
 
-	// Write Regions
-	s += (len(o.WriteRegions) + 1) * binary.MaxVarintLen64
+	// Write Regions List
+	s += (len(o.WriteRegions)) * binary.MaxVarintLen64
 	for _, wr := range o.WriteRegions {
 		s += len([]byte(wr))
 	}
 
-	// Publisher size + not nil bool
-	s += 1
+	// Publisher size
 	if o.Publisher != nil {
 		s += o.Publisher.Size()
 	}
 
-	// Encryption size + not nil bool
-	s += 1
+	// Encryption size
 	if o.Encryption != nil {
 		s += o.Encryption.Size()
 	}
 
-	// Compression size + not nil bool
-	s += 1
+	// Compression size
 	if o.Compression != nil {
 		s += o.Compression.Size()
 	}
 
-	s += 1                         // Flags
-	s += 2 * binary.MaxVarintLen64 // Created, Modified
 	return
 }
 
@@ -248,7 +243,7 @@ func (o *Metadata) Decode(d *lani.Decoder) (err error) {
 	// Decode all ACLs
 	if nACLs > 0 {
 		o.ACL = make([]*AccessControl, nACLs)
-		for i := uint(0); i < uint(nACLs); i++ {
+		for i := uint64(0); i < nACLs; i++ {
 			o.ACL[i] = &AccessControl{}
 			if isNil, err = d.DecodeStruct(o.ACL[i]); err != nil {
 				return err
@@ -293,278 +288,5 @@ func (o *Metadata) Decode(d *lani.Decoder) (err error) {
 		return err
 	}
 
-	return nil
-}
-
-//===========================================================================
-// Encryption
-//===========================================================================
-
-type EncryptionAlgorithm uint8
-
-const (
-	Plaintext EncryptionAlgorithm = iota
-	AES256_GCM
-	AES192_GCM
-	AES128_GCM
-	HMAC_SHA256
-	RSA_OEAP_SHA512
-)
-
-type Encryption struct {
-	PublicKeyID         string              `json:"public_key_id,omitempty" msg:"public_key_id,omitempty"`
-	EncryptionKey       []byte              `json:"encryption_key,omitempty" msg:"encryption_key,omitempty"`
-	HMACSecret          []byte              `json:"hmac_secret,omitempty" msg:"hmac_secret,omitempty"`
-	Signature           []byte              `json:"signature,omitempty" msg:"signature,omitempty"`
-	SealingAlgorithm    EncryptionAlgorithm `json:"sealing_algorithm,omitempty" msg:"sealing_algorithm,omitempty"`
-	EncryptionAlgorithm EncryptionAlgorithm `json:"encryption_algoirthm" msg:"encryption_algorithm"`
-	SignatureAlgorithm  EncryptionAlgorithm `json:"signature_algorithm,omitempty" msg:"signature_algorithm,omitempty"`
-}
-
-var _ lani.Encodable = &Encryption{}
-var _ lani.Decodable = &Encryption{}
-
-func (o *Encryption) Size() (s int) {
-	s += len([]byte(o.PublicKeyID)) + binary.MaxVarintLen64
-	s += len(o.EncryptionKey) + binary.MaxVarintLen64
-	s += len(o.HMACSecret) + binary.MaxVarintLen64
-	s += len(o.Signature) + binary.MaxVarintLen64
-	s += 3 // the three encryption algorithm bytes
-
-	return
-}
-
-func (o *Encryption) Encode(e *lani.Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeString(o.PublicKeyID); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.Encode(o.EncryptionKey); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.Encode(o.HMACSecret); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.Encode(o.Signature); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint8(uint8(o.SealingAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint8(uint8(o.EncryptionAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeUint8(uint8(o.SignatureAlgorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *Encryption) Decode(d *lani.Decoder) (err error) {
-	if o.PublicKeyID, err = d.DecodeString(); err != nil {
-		return err
-	}
-
-	if o.EncryptionKey, err = d.Decode(); err != nil {
-		return err
-	}
-
-	if o.HMACSecret, err = d.Decode(); err != nil {
-		return err
-	}
-
-	if o.Signature, err = d.Decode(); err != nil {
-		return err
-	}
-
-	var a uint8
-	if a, err = d.DecodeUint8(); err != nil {
-		return err
-	}
-	o.SealingAlgorithm = EncryptionAlgorithm(a)
-
-	if a, err = d.DecodeUint8(); err != nil {
-		return err
-	}
-	o.EncryptionAlgorithm = EncryptionAlgorithm(a)
-
-	if a, err = d.DecodeUint8(); err != nil {
-		return err
-	}
-	o.SignatureAlgorithm = EncryptionAlgorithm(a)
-
-	return nil
-}
-
-func ParseEncryptionAlgorithm(s string) (EncryptionAlgorithm, error) {
-	s = strings.TrimSpace(strings.ToUpper(s))
-	switch s {
-	case "PLAINTEXT":
-		return Plaintext, nil
-	case "AES256_GCM":
-		return AES256_GCM, nil
-	case "AES192_GCM":
-		return AES192_GCM, nil
-	case "AES128_GCM":
-		return AES128_GCM, nil
-	case "HMAC_SHA256":
-		return HMAC_SHA256, nil
-	case "RSA_OEAP_SHA512":
-		return RSA_OEAP_SHA512, nil
-	default:
-		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
-	}
-}
-
-func (o EncryptionAlgorithm) String() string {
-	switch o {
-	case Plaintext:
-		return "PLAINTEXT"
-	case AES256_GCM:
-		return "AES256_GCM"
-	case AES192_GCM:
-		return "AES192_GCM"
-	case AES128_GCM:
-		return "AES128_GCM"
-	case HMAC_SHA256:
-		return "HMAC_SHA256"
-	case RSA_OEAP_SHA512:
-		return "RSA_OEAP_SHA512"
-	default:
-		return "UNKNOWN"
-	}
-}
-
-func (o *EncryptionAlgorithm) MarshalJSON() ([]byte, error) {
-	return json.Marshal(o.String())
-}
-
-func (o *EncryptionAlgorithm) UnmarshalJSON(data []byte) (err error) {
-	var alg string
-	if err := json.Unmarshal(data, &alg); err != nil {
-		return err
-	}
-	if *o, err = ParseEncryptionAlgorithm(alg); err != nil {
-		return err
-	}
-	return nil
-}
-
-//===========================================================================
-// Compression
-//===========================================================================
-
-type CompressionAlgorithm uint8
-
-const (
-	None CompressionAlgorithm = iota
-	GZIP
-	COMPRESS
-	DEFLATE
-	BROTLI
-)
-
-type Compression struct {
-	Algorithm CompressionAlgorithm `json:"algorithm" msg:"algorithm"`
-	Level     int64                `json:"level,omitempty" msg:"level,omitempty"`
-}
-
-var _ lani.Encodable = &Compression{}
-var _ lani.Decodable = &Compression{}
-
-func (o *Compression) Size() int {
-	return 1 + binary.MaxVarintLen64
-}
-
-func (o *Compression) Encode(e *lani.Encoder) (n int, err error) {
-	var m int
-	if m, err = e.EncodeUint8(uint8(o.Algorithm)); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	if m, err = e.EncodeInt64(o.Level); err != nil {
-		return n + m, err
-	}
-	n += m
-
-	return
-}
-
-func (o *Compression) Decode(d *lani.Decoder) (err error) {
-	var a uint8
-	if a, err = d.DecodeUint8(); err != nil {
-		return err
-	}
-	o.Algorithm = CompressionAlgorithm(a)
-
-	if o.Level, err = d.DecodeInt64(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ParseCompressionAlgorithm(s string) (CompressionAlgorithm, error) {
-	s = strings.TrimSpace(strings.ToUpper(s))
-	switch s {
-	case "NONE":
-		return None, nil
-	case "GZIP":
-		return GZIP, nil
-	case "COMPRESS":
-		return COMPRESS, nil
-	case "DEFLATE":
-		return DEFLATE, nil
-	case "BROTLI":
-		return BROTLI, nil
-	default:
-		return 0, fmt.Errorf("%q is not a valid compression algorithm", s)
-	}
-}
-
-func (o CompressionAlgorithm) String() string {
-	switch o {
-	case None:
-		return "NONE"
-	case GZIP:
-		return "GZIP"
-	case COMPRESS:
-		return "COMPRESS"
-	case DEFLATE:
-		return "DEFLATE"
-	case BROTLI:
-		return "BROTLI"
-	default:
-		return "UNKNOWN"
-	}
-}
-
-func (o *CompressionAlgorithm) MarshalJSON() ([]byte, error) {
-	return json.Marshal(o.String())
-}
-
-func (o *CompressionAlgorithm) UnmarshalJSON(data []byte) (err error) {
-	var alg string
-	if err := json.Unmarshal(data, &alg); err != nil {
-		return err
-	}
-	if *o, err = ParseCompressionAlgorithm(alg); err != nil {
-		return err
-	}
 	return nil
 }
