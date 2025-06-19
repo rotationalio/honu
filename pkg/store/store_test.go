@@ -2,9 +2,7 @@ package store_test
 
 import (
 	"bytes"
-	"encoding/json"
-	"os"
-	"path/filepath"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -35,16 +33,40 @@ func TestSystemCollections(t *testing.T) {
 	}
 }
 
-//===========================================================================
-// Helper Functions
-//===========================================================================
+func Example_system_names() {
+	convert := func(b []byte) string {
+		s := make([]byte, 0, len(b))
+		for i, c := range b {
+			if c < 0x20 || c > 0x7E {
+				if i == 0 {
+					continue
+				}
+				s = append(s, ' ')
+			} else {
+				s = append(s, c)
+			}
+		}
 
-func loadFixture(t *testing.T, name string, v interface{}) {
-	path := filepath.Join("testdata", name)
-	f, err := os.Open(path)
-	require.NoError(t, err, "could not open %s", path)
-	defer f.Close()
+		return string(s)
+	}
 
-	err = json.NewDecoder(f).Decode(v)
-	require.NoError(t, err, "could not decode %s", path)
+	systemIDs := []ulid.ULID{
+		store.SystemHonuAgent,
+		store.SystemCollections,
+		store.SystemReplicas,
+		store.SystemAccessControl,
+	}
+
+	for _, sysid := range systemIDs {
+		ts := sysid.Timestamp()
+		name := convert(sysid[:])
+
+		fmt.Printf("%s (%s)\n", name, ts.UTC().Format(time.RFC3339))
+	}
+
+	// Output:
+	// honu honuagent  (1984-03-19T12:08:28Z)
+	// honu collection (1984-03-19T12:08:28Z)
+	// honu accesslist (1984-03-19T12:08:28Z)
+	// honu networking (1984-03-19T12:08:28Z)
 }

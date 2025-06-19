@@ -1,12 +1,17 @@
 package store
 
 import (
+	"time"
+
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/store/engine"
 	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
+	"go.rtnl.ai/honu/pkg/store/index"
+	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/locks"
 	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )
 
@@ -15,6 +20,7 @@ import (
 // generated since they are before
 var (
 	SystemPrefix        = [5]byte{0x00, 0x68, 0x6f, 0x6e, 0x75}
+	SystemHonuAgent     = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x68, 0x6f, 0x6e, 0x75, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x00})
 	SystemCollections   = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e})
 	SystemReplicas      = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x01, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6c, 0x69, 0x73, 0x74})
 	SystemAccessControl = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x02, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67})
@@ -37,7 +43,8 @@ type Store struct {
 	db  engine.Engine
 	mu  locks.Keys
 
-	collections map[ulid.ULID]*Collection
+	collectionNames index.Index[string, ulid.ULID] // Index of collection names to their IDs
+	collections     map[ulid.ULID]*Collection      // In memory collection objects to reduce allocations
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -48,12 +55,19 @@ type Store struct {
 // to disk.
 func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
-		pid:         lamport.PID(conf.PID),
-		mu:          locks.New(conf.Store.Concurrency),
-		collections: make(map[ulid.ULID]*Collection),
+		pid:             lamport.PID(conf.PID),
+		mu:              locks.New(conf.Store.Concurrency),
+		collections:     make(map[ulid.ULID]*Collection),
+		collectionNames: index.Map[string, ulid.ULID](make(map[string]ulid.ULID)),
 	}
 
 	if s.db, err = leveldb.Open(conf.Store); err != nil {
+		return nil, err
+	}
+
+	// Ensure the database is initialized and ready for use.
+	if err = s.initialize(); err != nil {
+		s.db.Close()
 		return nil, err
 	}
 
@@ -68,6 +82,11 @@ func (s *Store) Close() error {
 	// that no new operations can start while closing the store.
 	s.mu.LockAll()
 	defer s.mu.UnlockAll()
+
+	// Clean up in-memory items and indexes.
+	s.collections = nil
+	s.collectionNames = nil
+
 	return s.db.Close()
 }
 
@@ -75,13 +94,15 @@ func (s *Store) Close() error {
 // Collection Management
 //===========================================================================
 
-// Returns all of the collections that the store is maintaining including any system
-// collections that are used for internal database management.
-func (s *Store) Collections() []*Collection {
+// Returns a list of the collections that the store is maintaining excluding any system
+// collections that are used for internal database management. Only the metadata is
+// returned for each collection, so any collection operations must be performed after
+// opening the collection by its ID or name.
+func (s *Store) Collections() []metadata.Collection {
 	// TODO: should we check the collections on disk?
-	collections := make([]*Collection, 0, len(s.collections))
+	collections := make([]metadata.Collection, 0, len(s.collections))
 	for _, c := range s.collections {
-		collections = append(collections, c)
+		collections = append(collections, c.Collection)
 	}
 	return collections
 }
@@ -133,5 +154,76 @@ func (s *Store) Drop(identifier any) error {
 // the truncation operation will start from version 1, even if that truncation happens
 // concurrently with the creation of the new object.
 func (s *Store) Truncate(identifier any) error {
+	return nil
+}
+
+//===========================================================================
+// Initialization
+//===========================================================================
+
+func (s *Store) initialize() (err error) {
+	// Ensures that the system collections are created and initialized in the store and
+	// that the system user is created with the correct permissions.
+	now := time.Now()
+	defaultCollections := []*metadata.Collection{
+		{
+			ID:   SystemCollections,
+			Name: "honu_collections",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+		{
+			ID:   SystemReplicas,
+			Name: "honu_replicas",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+		{
+			ID:   SystemAccessControl,
+			Name: "honu_access_control",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+	}
+
+	for _, collection := range defaultCollections {
+		collectionKey := key.New(SystemCollections, collection.ID, &collection.Version.Scalar)
+
+		var exists bool
+		if exists, err = s.db.Has(collectionKey); err != nil {
+			return err
+		}
+
+		if !exists {
+			// Encode the collection metadata to store it in the database.
+			var data object.Object
+			if data, err = object.MarshalSystem(collection); err != nil {
+				return err
+			}
+
+			if err = s.db.Put(collectionKey, data); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
