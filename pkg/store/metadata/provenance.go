@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"encoding/binary"
 	"net"
 
 	"go.rtnl.ai/honu/pkg/store/lani"
@@ -22,11 +21,13 @@ type Publisher struct {
 var _ lani.Encodable = &Publisher{}
 var _ lani.Decodable = &Publisher{}
 
+// The static size of a zero valued Publisher object; see TestPublisherSize for details.
+const publisherStaticSize = 52
+
 func (o *Publisher) Size() (s int) {
-	// 2 ULIDs and 2 variable byte arrays
-	s += 16 + 16
-	s += len(o.IPAddress) + binary.MaxVarintLen64
-	s += len([]byte(o.UserAgent)) + binary.MaxVarintLen64
+	s = publisherStaticSize
+	s += len(o.IPAddress)
+	s += len([]byte(o.UserAgent))
 	return
 }
 

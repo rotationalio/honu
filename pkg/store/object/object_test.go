@@ -8,6 +8,7 @@ import (
 	mrand "math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 )
 
 func TestObject(t *testing.T) {
-	meta, data := loadFixture(t)
+	meta, data := loadObjectFixture(t)
 
 	obj, err := object.Marshal(meta, data)
 	require.NoError(t, err, "could not marshal object")
@@ -43,7 +44,7 @@ func TestObject(t *testing.T) {
 }
 
 func TestTombstone(t *testing.T) {
-	meta, _ := loadFixture(t)
+	meta, _ := loadObjectFixture(t)
 
 	obj, err := object.Marshal(meta, nil)
 	require.NoError(t, err, "could not marshal object")
@@ -80,19 +81,24 @@ func TestMalformed(t *testing.T) {
 	require.False(t, obj.Tombstone())
 }
 
-func loadFixture(t *testing.T) (*metadata.Metadata, []byte) {
+func loadObjectFixture(t *testing.T) (*metadata.Metadata, []byte) {
 	var meta *metadata.Metadata
-	f, err := os.Open("testdata/metadata.json")
-	require.NoError(t, err, "could not open testdata/metadata.json")
-	defer f.Close()
-
-	err = json.NewDecoder(f).Decode(&meta)
-	require.NoError(t, err, "could not decode metadata")
+	loadFixture(t, "metadata.json", &meta)
 
 	data, err := os.ReadFile("testdata/data.json")
 	require.NoError(t, err, "could not read testdata/data.json")
 
 	return meta, data
+}
+
+func loadFixture(t *testing.T, name string, v interface{}) {
+	path := filepath.Join("testdata", name)
+	f, err := os.Open(path)
+	require.NoError(t, err, "could not open %s", path)
+	defer f.Close()
+
+	err = json.NewDecoder(f).Decode(v)
+	require.NoError(t, err, "could not decode %s", path)
 }
 
 //===========================================================================

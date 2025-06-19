@@ -10,6 +10,9 @@ import (
 // engines for a variety of reasons, including variable performance benefits, different
 // features, or even implement heterogeneous Honu networks composed of different engines.
 type Engine interface {
+	Store
+	Iterator
+
 	// Engine returns the engine name and is used for debugging and logging.
 	Engine() string
 
