@@ -12,11 +12,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/google/go-querystring/query"
 	"github.com/rs/zerolog/log"
 	"go.rtnl.ai/honu/pkg/api/v1/credentials"
 	"go.rtnl.ai/ulid"
 	"go.rtnl.ai/x/backoff"
+	"go.rtnl.ai/x/query"
 )
 
 const (
