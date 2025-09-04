@@ -12,11 +12,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cenkalti/backoff"
-	"github.com/google/go-querystring/query"
 	"github.com/rs/zerolog/log"
 	"go.rtnl.ai/honu/pkg/api/v1/credentials"
 	"go.rtnl.ai/ulid"
+	"go.rtnl.ai/x/backoff"
+	"go.rtnl.ai/x/query"
 )
 
 const (
@@ -130,41 +130,31 @@ func (s *APIv1) WaitForReady(ctx context.Context) (err error) {
 	}
 
 	// Create a closure to repeatedly call the status endpoint
-	checkReady := func() (err error) {
+	checkReady := func() (_ bool, err error) {
 		var rep *http.Response
 		if rep, err = s.client.Do(req); err != nil {
-			return err
+			return false, err
 		}
 		defer rep.Body.Close()
 
 		if rep.StatusCode < 200 || rep.StatusCode >= 300 {
-			return &StatusError{StatusCode: rep.StatusCode, Reply: Reply{Success: false, Error: http.StatusText(rep.StatusCode)}}
+			return false, &StatusError{StatusCode: rep.StatusCode, Reply: Reply{Success: false, Error: http.StatusText(rep.StatusCode)}}
 		}
-		return nil
+		return true, nil
 	}
 
-	// Create exponential backoff ticker for retries
-	ticker := backoff.NewExponentialBackOff()
-
-	// Keep checking if the node is ready until it is ready or until the context expires.
-	for {
-		// Execute the status request
-		if err = checkReady(); err == nil {
-			// Success - node is ready for requests!
-			return nil
-		}
-
-		// Log the error warning that we're still waiting to connect to the node
-		log.Warn().Err(err).Str("endpoint", s.endpoint.String()).Msg("waiting to connect to TRISA node")
-		wait := time.After(ticker.NextBackOff())
-
-		// Wait for the context to be done or for the ticker to move to the next backoff.
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-wait:
-		}
+	// Create notification handler for backoff
+	notify := func(err error, delay time.Duration) {
+		log.Warn().Err(err).
+			Str("endpoint", s.endpoint.String()).
+			Dur("delay", delay).
+			Msg("waiting to connect to HonuDB node")
 	}
+
+	if _, err = backoff.Retry(ctx, checkReady, backoff.WithNotify(notify)); err != nil {
+		return err
+	}
+	return nil
 }
 
 //===========================================================================
