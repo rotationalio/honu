@@ -1,0 +1,42 @@
+{
+  "id": "01JDYY8VJHHXJKVD5RF5WYQ32A",
+  "name": "Test Collection",
+  "version": {
+    "scalar": "9.3",
+    "region": "us-west1",
+    "parent": "9.2",
+    "created": "2024-11-28T21:03:51Z"
+  },
+  "owner": "01JDYY8VJHHXJKVD5RF5W7MQ15",
+  "group": "01JDYY94S6D3W15CYXQTSRPRNB",
+  "permissions": 155,
+  "acl": [
+    {
+      "client_id": "01JDZ1C8PFCTTFH0NYYQPRJYZ3",
+      "permissions": 84
+    },
+    {
+      "client_id": "01JDYY8VJHHXJKVD5RF5W7MQ15",
+      "permissions": 76
+    }
+  ],
+  "write_regions": ["us-west1", "us-east1"],
+  "publisher": {
+    "publisher_id": "01JDZ187FNTJANGYVSBKEAQ0RT",
+    "client_id": "01JDZ18DE4RH4N3TWY7QRPTCYX",
+    "ipaddr": "10.42.10.123",
+    "user_agent": "PyHonu v1"
+  },
+  "encryption": {
+    "sealing_algorithm": "PLAINTEXT",
+    "encryption_algorithm": "PLAINTEXT",
+    "signature_algorithm": "PLAINTEXT"
+  },
+  "compression": {
+    "algorithm": "NONE",
+    "level": 1
+  },
+  "flags": 12,
+  "created": "2024-11-28T21:03:51Z",
+  "modified": "2024-12-19T03:21:48Z"
+}

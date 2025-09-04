@@ -1,12 +1,35 @@
 package store
 
 import (
+	"errors"
+	"time"
+
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/store/engine"
 	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
+	"go.rtnl.ai/honu/pkg/store/index"
+	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/locks"
+	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
+)
+
+// System collections are used for internal database management and are not named but
+// are directly identified by a unique ID that is less than any ULID that would be
+// generated since they are before
+var (
+	SystemPrefix        = [5]byte{0x00, 0x68, 0x6f, 0x6e, 0x75}
+	SystemHonuAgent     = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x68, 0x6f, 0x6e, 0x75, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x00})
+	SystemCollections   = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e})
+	SystemReplicas      = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x01, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6c, 0x69, 0x73, 0x74})
+	SystemAccessControl = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x02, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67})
+)
+
+// Collection or store related errors.
+var (
+	ErrCreateID = errors.New("create collection: cannot specify ID")
 )
 
 // Store implements local database functionality for interaction with objects and their
@@ -26,19 +49,8 @@ type Store struct {
 	db  engine.Engine
 	mu  locks.Keys
 
-	collections map[ulid.ULID]*Collection
-}
-
-// Collections are subsets of the Store that allow access to related objects. Each
-// object in a collection is prefixed by the collection ID, ensuring that the objects
-// are grouped together and can be accessed efficiently.
-type Collection struct {
-	pid lamport.PID
-	db  engine.Engine
-	mu  locks.Keys
-
-	ID   ulid.ULID
-	Name string
+	collectionNames index.Index[string, ulid.ULID] // Index of collection names to their IDs
+	collections     map[ulid.ULID]*Collection      // In memory collection objects to reduce allocations
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -49,12 +61,19 @@ type Collection struct {
 // to disk.
 func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
-		pid:         lamport.PID(conf.PID),
-		mu:          locks.New(conf.Store.Concurrency),
-		collections: make(map[ulid.ULID]*Collection),
+		pid:             lamport.PID(conf.PID),
+		mu:              locks.New(conf.Store.Concurrency),
+		collections:     make(map[ulid.ULID]*Collection),
+		collectionNames: index.Map[string, ulid.ULID](make(map[string]ulid.ULID)),
 	}
 
 	if s.db, err = leveldb.Open(conf.Store); err != nil {
+		return nil, err
+	}
+
+	// Ensure the database is initialized and ready for use.
+	if err = s.initialize(); err != nil {
+		s.db.Close()
 		return nil, err
 	}
 
@@ -69,6 +88,11 @@ func (s *Store) Close() error {
 	// that no new operations can start while closing the store.
 	s.mu.LockAll()
 	defer s.mu.UnlockAll()
+
+	// Clean up in-memory items and indexes.
+	s.collections = nil
+	s.collectionNames = nil
+
 	return s.db.Close()
 }
 
@@ -76,13 +100,15 @@ func (s *Store) Close() error {
 // Collection Management
 //===========================================================================
 
-// Returns all of the collections that the store is maintaining including any system
-// collections that are used for internal database management.
-func (s *Store) Collections() []*Collection {
+// Returns a list of the collections that the store is maintaining excluding any system
+// collections that are used for internal database management. Only the metadata is
+// returned for each collection, so any collection operations must be performed after
+// opening the collection by its ID or name.
+func (s *Store) Collections() []metadata.Collection {
 	// TODO: should we check the collections on disk?
-	collections := make([]*Collection, 0, len(s.collections))
+	collections := make([]metadata.Collection, 0, len(s.collections))
 	for _, c := range s.collections {
-		collections = append(collections, c)
+		collections = append(collections, c.Collection)
 	}
 	return collections
 }
@@ -91,18 +117,27 @@ func (s *Store) Collections() []*Collection {
 // The name is case-insensitive and should be unique within the store. It must contain
 // only no spaces or punctuation and cannot start with a number. The name also must not
 // be a ULID string, which is reserved for collection IDs.
-func (s *Store) New(name string) (*Collection, error) {
+func (s *Store) New(info *metadata.Collection) (_ *Collection, err error) {
+	// Validate the info to ensure a collection can be created.
+	if err = info.Validate(); err != nil {
+		return nil, err
+	}
+
+	// A collection must not have an ID set.
+	if !info.ID.IsZero() {
+		return nil, ErrCreateID
+	}
+
 	// TODO: lock the collection key
 	// TODO: check name in index to ensure uniqueness.
 	// TODO: normalize name to ensure it is valid and does not contain any illegal characters.
 	// TODO: save the collection index to disk.
 	collection := &Collection{
+		Collection: *info,
+
 		pid: s.pid,
 		db:  s.db,
 		mu:  s.mu,
-
-		ID:   ulid.Make(),
-		Name: name,
 	}
 
 	s.collections[collection.ID] = collection
@@ -113,6 +148,17 @@ func (s *Store) New(name string) (*Collection, error) {
 // not exist, it will return an error. The collection is ready for access when returned.
 func (s *Store) Open(identifier any) (*Collection, error) {
 	return nil, nil
+}
+
+// Modifies the metadata of an existing collection; the collection should either have
+// an ID or a name for reference and must already exist in the store.
+func (s *Store) Modify(info *metadata.Collection) error {
+	// Validate the info to ensure a collection can be modified.
+	if err := info.Validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Drop a collection, removing it from the store and deleting all of its contained
@@ -135,84 +181,79 @@ func (s *Store) Truncate(identifier any) error {
 	return nil
 }
 
+// Returns the underlying engine that the store is using for persistence. This is
+// primarily used for testing and debugging purposes, and should be used with caution.
+func (s *Store) Engine() engine.Engine {
+	return s.db
+}
+
 //===========================================================================
-// Object Management
+// Initialization
 //===========================================================================
 
-// List all of the objects in the collection, returning an iterator that will allow the
-// caller to either simply iterate over the keys or to actually retreive the objects in
-// a memory-efficient manner.
-func (c *Collection) List() error {
-	return nil
-}
+func (s *Store) initialize() (err error) {
+	// Ensures that the system collections are created and initialized in the store and
+	// that the system user is created with the correct permissions.
+	now := time.Now()
+	defaultCollections := []*metadata.Collection{
+		{
+			ID:   SystemCollections,
+			Name: "honu_collections",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+		{
+			ID:   SystemReplicas,
+			Name: "honu_replicas",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+		{
+			ID:   SystemAccessControl,
+			Name: "honu_access_control",
+			Version: &metadata.Version{
+				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
+				Created: now,
+			},
+			Owner:    SystemHonuAgent,
+			Group:    SystemHonuAgent,
+			Created:  now,
+			Modified: now,
+		},
+	}
 
-// List all of the objects in the collection that match the specified query. An iterator
-// is returned that will allow the caller to either simply iterate over the keys
-// or to actually retrieve the objects in a memory-efficient manner.
-func (c *Collection) Query() error {
-	return nil
-}
+	for _, collection := range defaultCollections {
+		collectionKey := key.New(SystemCollections, collection.ID, &collection.Version.Scalar)
 
-// Empty the collection by adding a tombstone version to all of the objects in the
-// collection. These objects cannot be accessed directly any longer but their version
-// history is preserved. This is different from the Collection.Truncate method which
-// removes all objects and their versions from the collection.
-func (c *Collection) Empty() error {
-	return nil
-}
+		var exists bool
+		if exists, err = s.db.Has(collectionKey); err != nil {
+			return err
+		}
 
-// Create a new object in the collection with the given key and value. The key must be
-// unique within the collection, and if it already exists, it will return an error.
-// Note that because of the replicated nature of Honu, we can't guarantee that the
-// object was uniquely created, however it will guarantee that the object version
-// history starts from the current object and branches can be detected later.
-func (c *Collection) Create() error {
-	return nil
-}
+		if !exists {
+			// Encode the collection metadata to store it in the database.
+			var data object.Object
+			if data, err = object.MarshalSystem(collection); err != nil {
+				return err
+			}
 
-// Retrieve the latest version of the object with the given key from the collection. If
-// the object is a tombstone record or if the key is not in the store, then a not found
-// error will be returned. If a version is specified that version will be retrieved,
-// even if it is a tombstone record; version does not exist is returned instead of
-// not found in this case.
-func (c *Collection) Retrieve() error {
-	return nil
-}
+			if err = s.db.Put(collectionKey, data); err != nil {
+				return err
+			}
+		}
+	}
 
-// Returns an iterator of all versions of the object; iterating from the most recent
-// version to the oldest. Tombstone versions are included by the iterator.
-func (c *Collection) Versions() error {
-	return nil
-}
-
-// Create a new version record of the object for the given key. If the object does not
-// already exist, it will return an error. Because of the replicated nature of Honu,
-// we can't guarantee that the object doesn't exist somewhere else in the cluster but
-// this will prevent updates locally until that created version is replicated.
-func (c *Collection) Update() error {
-	return nil
-}
-
-// Merge performs an upsert operation on the object, creating a new version of the key
-// if it does not exist, or updating the existing version if it does. Merge provides
-// simpler semantics than Create or Update as the caller does not need to worry about
-// whether the object exists on the cluster or not, and in single replica queries its
-// better to use Merge.
-func (c *Collection) Merge() error {
-	return nil
-}
-
-// Delete an object from the collection by adding a tombstone version; the object will
-// not be returned in list queries or retrieval but the version history of the object
-// will be preserved.
-func (c *Collection) Delete() error {
-	return nil
-}
-
-// Destroy the object and all of its versions from the collection. This method adds a
-// truncated record to the object, which is replicated to all replicas. Any object that
-// gets created with the same key in the future will start from version 1, even if
-// the truncation happens concurrently with the creation of the new object.
-func (c *Collection) Destroy() error {
 	return nil
 }

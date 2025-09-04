@@ -1,7 +1,6 @@
 package metadata
 
 import (
-	"encoding/binary"
 	"time"
 
 	"go.rtnl.ai/honu/pkg/store/lamport"
@@ -23,17 +22,19 @@ type Version struct {
 var _ lani.Encodable = &Version{}
 var _ lani.Decodable = &Version{}
 
+// The static size of a zero valued Version object; see TestVersionSize for details.
+const versionStaticSize = 12
+
 func (o *Version) Size() (s int) {
-	s += o.Scalar.Size() // Scalar uint32 + uint64
-	s += 1               // Add 1 for the parent nil bool
+	s = versionStaticSize
+
+	// Scalar is technically static, but we add its size here in case there are changes
+	// to the Scalar struct in the future (e.g. a promotion of integers).
+	s += o.Scalar.Size()
 
 	if o.Parent != nil {
 		s += o.Parent.Size()
 	}
-
-	s += 1                     // Tombstone bool
-	s += binary.MaxVarintLen64 // Timestamp int64
-
 	return
 }
 
