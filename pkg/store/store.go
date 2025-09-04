@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"time"
 
 	"go.rtnl.ai/honu/pkg/config"
@@ -24,6 +25,11 @@ var (
 	SystemCollections   = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e})
 	SystemReplicas      = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x01, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6c, 0x69, 0x73, 0x74})
 	SystemAccessControl = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x02, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67})
+)
+
+// Collection or store related errors.
+var (
+	ErrCreateID = errors.New("create collection: cannot specify ID")
 )
 
 // Store implements local database functionality for interaction with objects and their
@@ -111,16 +117,23 @@ func (s *Store) Collections() []metadata.Collection {
 // The name is case-insensitive and should be unique within the store. It must contain
 // only no spaces or punctuation and cannot start with a number. The name also must not
 // be a ULID string, which is reserved for collection IDs.
-func (s *Store) New(name string) (*Collection, error) {
+func (s *Store) New(info *metadata.Collection) (_ *Collection, err error) {
+	// Validate the info to ensure a collection can be created.
+	if err = info.Validate(); err != nil {
+		return nil, err
+	}
+
+	// A collection must not have an ID set.
+	if !info.ID.IsZero() {
+		return nil, ErrCreateID
+	}
+
 	// TODO: lock the collection key
 	// TODO: check name in index to ensure uniqueness.
 	// TODO: normalize name to ensure it is valid and does not contain any illegal characters.
 	// TODO: save the collection index to disk.
 	collection := &Collection{
-		Collection: metadata.Collection{
-			ID:   ulid.Make(),
-			Name: name,
-		},
+		Collection: *info,
 
 		pid: s.pid,
 		db:  s.db,
@@ -135,6 +148,17 @@ func (s *Store) New(name string) (*Collection, error) {
 // not exist, it will return an error. The collection is ready for access when returned.
 func (s *Store) Open(identifier any) (*Collection, error) {
 	return nil, nil
+}
+
+// Modifies the metadata of an existing collection; the collection should either have
+// an ID or a name for reference and must already exist in the store.
+func (s *Store) Modify(info *metadata.Collection) error {
+	// Validate the info to ensure a collection can be modified.
+	if err := info.Validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Drop a collection, removing it from the store and deleting all of its contained
@@ -155,6 +179,12 @@ func (s *Store) Drop(identifier any) error {
 // concurrently with the creation of the new object.
 func (s *Store) Truncate(identifier any) error {
 	return nil
+}
+
+// Returns the underlying engine that the store is using for persistence. This is
+// primarily used for testing and debugging purposes, and should be used with caution.
+func (s *Store) Engine() engine.Engine {
+	return s.db
 }
 
 //===========================================================================

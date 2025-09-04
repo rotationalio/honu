@@ -7,10 +7,115 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	"go.rtnl.ai/honu/pkg/config"
+	"go.rtnl.ai/honu/pkg/logger"
 	"go.rtnl.ai/honu/pkg/store"
+	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
+	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/ulid"
 )
+
+//===========================================================================
+// Test Suite with underlying database
+//===========================================================================
+
+type honuTestSuite struct {
+	suite.Suite
+	conf  config.Config
+	store *store.Store
+}
+
+func TestWriteableStore(t *testing.T) {
+	tests := &honuTestSuite{
+		conf: config.Config{
+			PID:          1,
+			Maintenance:  false,
+			LogLevel:     logger.LevelDecoder(zerolog.ErrorLevel),
+			ConsoleLog:   false,
+			BindAddr:     ":11111",
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			IdleTimeout:  5 * time.Second,
+			Store: config.StoreConfig{
+				ReadOnly:    false,
+				DataPath:    t.TempDir(),
+				Concurrency: 128,
+			},
+		},
+	}
+
+	var err error
+	tests.store, err = store.Open(tests.conf)
+	require.NoError(t, err, "failed to open store, could not start tests")
+
+	suite.Run(t, tests)
+}
+
+func TestReadonlyStore(t *testing.T) {
+	// Before implementing read-only stores, we need to create a database to read from.
+	// If the database does not exist, then it cannot create it in read-only mode.
+	t.Skip("skipping read-only tests until we have fixtures")
+
+	tests := &honuTestSuite{
+		conf: config.Config{
+			PID:          1,
+			Maintenance:  false,
+			LogLevel:     logger.LevelDecoder(zerolog.ErrorLevel),
+			ConsoleLog:   false,
+			BindAddr:     ":11111",
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			IdleTimeout:  5 * time.Second,
+			Store: config.StoreConfig{
+				ReadOnly:    true,
+				DataPath:    t.TempDir(),
+				Concurrency: 128,
+			},
+		},
+	}
+	fmt.Println(tests.conf.Store.DataPath)
+
+	var err error
+	tests.store, err = store.Open(tests.conf)
+	require.NoError(t, err, "failed to open store, could not start tests")
+
+	suite.Run(t, tests)
+}
+
+//===========================================================================
+// Writeable and Read-Only Store Tests
+//===========================================================================
+
+func (s *honuTestSuite) TestInitialized() {
+	// In read-only mode, the collections should not be overwritten.
+	require := s.Require()
+
+	engine := s.store.Engine()
+	require.NotNil(engine, "store engine should not be nil")
+
+	collections := []ulid.ULID{
+		store.SystemCollections,
+		store.SystemReplicas,
+		store.SystemAccessControl,
+	}
+
+	version := lamport.Scalar{PID: 0, VID: 1}
+
+	for _, collection := range collections {
+		cKey := key.New(store.SystemCollections, collection, &version)
+		exists, err := engine.Has(cKey)
+		require.NoError(err, "failed to check if collection exists")
+		require.True(exists, "collection %s should exist", collection)
+	}
+}
+
+//===========================================================================
+// Unit tests without underlying database
+//===========================================================================
 
 func TestSystemCollections(t *testing.T) {
 	// System collections must be less than any ULID that would be generated.
@@ -70,3 +175,52 @@ func Example_system_names() {
 	// honu accesslist (1984-03-19T12:08:28Z)
 	// honu networking (1984-03-19T12:08:28Z)
 }
+
+func TestInitializedEmpty(t *testing.T) {
+	// Test Setup
+	conf := config.Config{
+		PID: uint32(8),
+		Store: config.StoreConfig{
+			DataPath:    t.TempDir(),
+			ReadOnly:    false,
+			Concurrency: 16,
+		},
+	}
+
+	version := lamport.Scalar{PID: 0, VID: 1}
+	collections := []ulid.ULID{
+		store.SystemCollections,
+		store.SystemReplicas,
+		store.SystemAccessControl,
+	}
+
+	// Ensure the store is intialized when the database is empty.
+	ldb, err := leveldb.Open(conf.Store)
+	require.NoError(t, err, "could not open leveldb for testing")
+
+	// Ensure the collections do not exist.
+	for _, collection := range collections {
+		cKey := key.New(store.SystemCollections, collection, &version)
+		exists, err := ldb.Has(cKey)
+		require.NoError(t, err, "failed to check if collection exists")
+		require.False(t, exists, "collection %s should exist", collection)
+	}
+
+	// Open the store to initialize the database.
+	require.NoError(t, ldb.Close(), "could not close leveldb")
+
+	db, err := store.Open(conf)
+	require.NoError(t, err, "could not open store")
+
+	// Ensure the collections now exist.
+	for _, collection := range collections {
+		cKey := key.New(store.SystemCollections, collection, &version)
+		exists, err := db.Engine().Has(cKey)
+		require.NoError(t, err, "failed to check if collection exists")
+		require.True(t, exists, "collection %s should exist", collection)
+	}
+}
+
+//===========================================================================
+// Fixtures Management
+//===========================================================================

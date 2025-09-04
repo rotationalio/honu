@@ -39,6 +39,14 @@ func (c *Collection) String() string {
 	return c.ID.String()
 }
 
+func (c *Collection) Validate() (err error) {
+	if err = ValidateName(c.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // The static size of a zero valued Collection object; see TestCollectionSize for details.
 const collectionStaticSize = 104
 
