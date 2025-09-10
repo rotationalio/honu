@@ -15,14 +15,13 @@ import (
 )
 
 func TestNewKey(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 1, PID: 2}
 
-	k := key.New(cid, oid, vers)
+	k := key.New(oid, vers)
 	require.NotNil(t, k)
-	require.Equal(t, 45, len(k))
+	require.Equal(t, 29, len(k))
 	require.Equal(t, oid, k.ObjectID())
-	require.Equal(t, cid, k.CollectionID())
 	require.Equal(t, *vers, k.Version())
 }
 
@@ -30,7 +29,7 @@ func TestKeyLexicographic(t *testing.T) {
 	// For the same collection and object ID the keys should be lexicographically sorted
 	// by the version to ensure that we can read the latest version either by choosing
 	// the first item in a list of sorted keys or the last item.
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 
 	t.Run("Static", func(t *testing.T) {
 		versions := lamport.Scalars{
@@ -51,7 +50,7 @@ func TestKeyLexicographic(t *testing.T) {
 
 		keys := make(key.Keys, len(versions))
 		for i, v := range versions {
-			keys[i] = key.New(cid, oid, v)
+			keys[i] = key.New(oid, v)
 		}
 
 		// Ensure the keys are sorted both by monotonically increasing version and by
@@ -69,7 +68,7 @@ func TestKeyLexicographic(t *testing.T) {
 
 		// Create a list of keys with monotonically increasing versions.
 		for i := 0; i < len(keys); i++ {
-			keys[i] = key.New(cid, oid, vers)
+			keys[i] = key.New(oid, vers)
 			vers = randNextScalar(vers)
 		}
 
@@ -88,7 +87,7 @@ func TestKeyLexicographic(t *testing.T) {
 
 		// Create a list of keys with monotonically increasing versions.
 		for i := 0; i < len(keys); i++ {
-			keys[i] = key.New(cid, oid, vers)
+			keys[i] = key.New(oid, vers)
 			vers = randNextScalar(vers)
 		}
 
@@ -105,11 +104,11 @@ func TestKeyLexicographic(t *testing.T) {
 }
 
 func TestKeyCheck(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 1, PID: 2}
 
 	t.Run("Valid", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
+		k := key.New(oid, vers)
 		require.NoError(t, k.Check())
 	})
 
@@ -119,18 +118,18 @@ func TestKeyCheck(t *testing.T) {
 	})
 
 	t.Run("BadVersion", func(t *testing.T) {
-		badKey := key.New(cid, oid, vers)
+		badKey := key.New(oid, vers)
 		badKey[0] = 0x28
 		require.ErrorIs(t, badKey.Check(), key.ErrBadVersion)
 	})
 }
 
 func TestObjectID(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 80, PID: 122}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
+		k := key.New(oid, vers)
 		require.Equal(t, oid, k.ObjectID())
 	})
 
@@ -142,29 +141,12 @@ func TestObjectID(t *testing.T) {
 	})
 }
 
-func TestCollectionID(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
-	vers := &lamport.Scalar{VID: 391, PID: 8}
-
-	t.Run("Ok", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
-		require.Equal(t, cid, k.CollectionID())
-	})
-
-	t.Run("Panics", func(t *testing.T) {
-		badKey := key.Key(make([]byte, 42))
-		require.Panics(t, func() {
-			badKey.CollectionID()
-		})
-	})
-}
-
 func TestVersion(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 5, PID: 1}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
+		k := key.New(oid, vers)
 		require.Equal(t, *vers, k.Version())
 	})
 
@@ -177,16 +159,15 @@ func TestVersion(t *testing.T) {
 }
 
 func TestObjectPrefix(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 1, PID: 2}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
+		k := key.New(oid, vers)
 		prefix := k.ObjectPrefix()
-		require.Len(t, prefix, 33)
+		require.Len(t, prefix, 17)
 		require.Equal(t, uint8(0x01), prefix[0])
-		require.Equal(t, cid, ulid.ULID(prefix[1:17]))
-		require.Equal(t, oid, ulid.ULID(prefix[17:33]))
+		require.Equal(t, oid, ulid.ULID(prefix[1:17]))
 	})
 
 	t.Run("Panics", func(t *testing.T) {
@@ -198,17 +179,16 @@ func TestObjectPrefix(t *testing.T) {
 }
 
 func TestObjectLimit(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 	vers := &lamport.Scalar{VID: 1, PID: 2}
 
 	t.Run("Ok", func(t *testing.T) {
-		k := key.New(cid, oid, vers)
+		k := key.New(oid, vers)
 		limit := k.ObjectLimit()
-		require.Len(t, limit, 33)
+		require.Len(t, limit, 17)
 		require.Equal(t, uint8(0x01), limit[0])
-		require.Equal(t, cid, ulid.ULID(limit[1:17]))
-		require.True(t, bytes.Equal(oid[:15], limit[17:32]))
-		require.Equal(t, oid[15]+1, limit[32])
+		require.True(t, bytes.Equal(oid[:15], limit[1:16]))
+		require.Equal(t, oid[15]+1, limit[16])
 	})
 
 	t.Run("Panics", func(t *testing.T) {
@@ -220,34 +200,34 @@ func TestObjectLimit(t *testing.T) {
 }
 
 func TestObjectRange(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 
-	k := key.New(cid, oid, nil)
+	k := key.New(oid, nil)
 	prefix, limit := k.ObjectPrefix(), k.ObjectLimit()
 
 	// The prefix should come before the key
 	require.True(t, bytes.Compare(prefix, k[:]) == -1)
 
 	// The limit should be greater than the maximum possible version
-	maxver := key.New(cid, oid, &lamport.Scalar{VID: math.MaxUint64, PID: math.MaxUint32})
+	maxver := key.New(oid, &lamport.Scalar{VID: math.MaxUint64, PID: math.MaxUint32})
 	require.True(t, bytes.Compare(limit, maxver[:]) == 1)
 
 	// The limit should be less than the zero valued version of the next object
 	next := make([]byte, 16)
 	copy(next[:15], oid[:15])
 	next[15] = oid[15] + 1
-	nver := key.New(cid, ulid.ULID(next), nil)
+	nver := key.New(ulid.ULID(next), nil)
 	require.True(t, bytes.Compare(limit, nver[:]) == -1)
 }
 
 func TestHasVersion(t *testing.T) {
-	cid, oid := ulid.Make(), ulid.Make()
+	oid := ulid.Make()
 
 	t.Run("Nil", func(t *testing.T) {
-		k1 := key.New(cid, oid, nil)
+		k1 := key.New(oid, nil)
 		require.False(t, k1.HasVersion())
 
-		k2 := key.New(cid, oid, &lamport.Scalar{})
+		k2 := key.New(oid, &lamport.Scalar{})
 		require.False(t, k2.HasVersion())
 	})
 
@@ -267,19 +247,19 @@ func TestHasVersion(t *testing.T) {
 			{0xff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 		}
 
-		k1 := key.New(cid, oid, nil)
-		k2 := key.New(ulid.Null, ulid.Null, nil)
+		k1 := key.New(oid, nil)
+		k2 := key.New(ulid.Null, nil)
 
 		for _, vers := range cases {
-			copy(k1[33:45], vers)
-			copy(k2[33:45], vers)
+			copy(k1[17:29], vers)
+			copy(k2[17:29], vers)
 			require.True(t, k1.HasVersion())
 			require.True(t, k2.HasVersion())
 		}
 	})
 
 	t.Run("Panics", func(t *testing.T) {
-		badKey := key.Key(make([]byte, 42))
+		badKey := key.Key(make([]byte, 26))
 		require.Panics(t, func() {
 			badKey.HasVersion()
 		})
@@ -300,7 +280,7 @@ func TestSort(t *testing.T) {
 }
 
 func randKey() key.Key {
-	b := make([]byte, 45)
+	b := make([]byte, 29)
 	crand.Read(b)
 	return key.Key(b)
 }

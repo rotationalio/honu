@@ -54,7 +54,6 @@ func TestMetadataKey(t *testing.T) {
 	loadFixture(t, "metadata.json", &obj)
 
 	key := obj.Key()
-	require.Equal(t, obj.CollectionID, key.CollectionID())
 	require.Equal(t, obj.ObjectID, key.ObjectID())
 	require.Equal(t, obj.Version.Scalar, key.Version())
 }

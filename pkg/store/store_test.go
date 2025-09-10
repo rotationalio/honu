@@ -3,6 +3,7 @@ package store_test
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -10,10 +11,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/logger"
 	"go.rtnl.ai/honu/pkg/store"
-	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/ulid"
@@ -42,7 +43,7 @@ func TestWriteableStore(t *testing.T) {
 			IdleTimeout:  5 * time.Second,
 			Store: config.StoreConfig{
 				ReadOnly:    false,
-				DataPath:    t.TempDir(),
+				DataPath:    filepath.Join(t.TempDir(), "honu-test.db"),
 				Concurrency: 128,
 			},
 		},
@@ -72,7 +73,7 @@ func TestReadonlyStore(t *testing.T) {
 			IdleTimeout:  5 * time.Second,
 			Store: config.StoreConfig{
 				ReadOnly:    true,
-				DataPath:    t.TempDir(),
+				DataPath:    filepath.Join(t.TempDir(), "honu-test.db"),
 				Concurrency: 128,
 			},
 		},
@@ -94,8 +95,8 @@ func (s *honuTestSuite) TestInitialized() {
 	// In read-only mode, the collections should not be overwritten.
 	require := s.Require()
 
-	engine := s.store.Engine()
-	require.NotNil(engine, "store engine should not be nil")
+	db := s.store.DB()
+	require.NotNil(db, "store db should not be nil")
 
 	collections := []ulid.ULID{
 		store.SystemCollections,
@@ -103,11 +104,8 @@ func (s *honuTestSuite) TestInitialized() {
 		store.SystemAccessControl,
 	}
 
-	version := lamport.Scalar{PID: 0, VID: 1}
-
 	for _, collection := range collections {
-		cKey := key.New(store.SystemCollections, collection, &version)
-		exists, err := engine.Has(cKey)
+		exists, err := s.store.Has(collection)
 		require.NoError(err, "failed to check if collection exists")
 		require.True(exists, "collection %s should exist", collection)
 	}
@@ -181,7 +179,7 @@ func TestInitializedEmpty(t *testing.T) {
 	conf := config.Config{
 		PID: uint32(8),
 		Store: config.StoreConfig{
-			DataPath:    t.TempDir(),
+			DataPath:    filepath.Join(t.TempDir(), "honu-test.db"),
 			ReadOnly:    false,
 			Concurrency: 16,
 		},
@@ -195,27 +193,43 @@ func TestInitializedEmpty(t *testing.T) {
 	}
 
 	// Ensure the store is intialized when the database is empty.
-	ldb, err := leveldb.Open(conf.Store)
-	require.NoError(t, err, "could not open leveldb for testing")
+	bdb, err := bbolt.Open(conf.Store.DataPath, 0600, nil)
+	require.NoError(t, err, "could not open bbolt for testing")
+
+	// Helper method to check if a key exists in the database.
+	hasKey := func(bdb *bbolt.DB, key []byte) (exists bool, err error) {
+		err = bdb.View(func(tx *bbolt.Tx) error {
+			b := tx.Bucket(store.SystemCollections[:])
+			if b == nil {
+				return nil
+			}
+
+			if v := b.Get(key); v != nil {
+				exists = true
+			}
+			return nil
+		})
+		return exists, err
+	}
 
 	// Ensure the collections do not exist.
 	for _, collection := range collections {
-		cKey := key.New(store.SystemCollections, collection, &version)
-		exists, err := ldb.Has(cKey)
+		cKey := key.New(collection, &version)
+		exists, err := hasKey(bdb, cKey)
 		require.NoError(t, err, "failed to check if collection exists")
 		require.False(t, exists, "collection %s should exist", collection)
 	}
 
 	// Open the store to initialize the database.
-	require.NoError(t, ldb.Close(), "could not close leveldb")
+	require.NoError(t, bdb.Close(), "could not close bbolt")
 
 	db, err := store.Open(conf)
 	require.NoError(t, err, "could not open store")
 
 	// Ensure the collections now exist.
 	for _, collection := range collections {
-		cKey := key.New(store.SystemCollections, collection, &version)
-		exists, err := db.Engine().Has(cKey)
+		cKey := key.New(collection, &version)
+		exists, err := hasKey(db.DB(), cKey)
 		require.NoError(t, err, "failed to check if collection exists")
 		require.True(t, exists, "collection %s should exist", collection)
 	}

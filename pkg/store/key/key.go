@@ -11,7 +11,7 @@ import (
 
 const (
 	// The default size of a v1 object storage key.
-	keySize int = 45
+	keySize int = 29
 
 	// The version of the key for compatibility indication; increment this number any time
 	// the underlying key data is no longer compatible with the previous version.
@@ -24,13 +24,13 @@ var (
 	ErrMalformed  = errors.New("key is malformed: cannot parse version components")
 )
 
-// Keys are used to store objects in the underlying key/value store. It is a 45 byte key
-// that is composed of 16 byte object and collection IDs and a 4 byte uint32 and 8 byte
-// uint64 representing the lamport scalar version number. The first byte indicates the
-// key version and marshaling compatibility. There are no separator characters
-// between the components of the key since all components are a fixed length.
+// Keys are used to store objects in the underlying key/value store. It is a 29 byte key
+// that is composed of a 16 byte object ID and a 4 byte uint32 and 8 byte uint64
+// representing the lamport scalar version number. The first byte indicates the key
+// version and marshaling compatibility. There are no separator characters between the
+// components of the key since all components are a fixed length.
 //
-// A key is structured as keyVersion::collection::oid::vid::pid
+// A key is structured as keyVersion::oid::vid::pid
 //
 // Note that the version is serialized differently than the lamport scalar in order to
 // maintain lexicographic sorting of the the data.
@@ -39,24 +39,15 @@ type Key []byte
 // Create a new key for the specified collection and object ID with the given version.
 // If the version is nil, the key is treated as an object prefix and either the latest
 // version of the object is returned or all versions related to the object.
-func New(cid, oid ulid.ULID, vers *lamport.Scalar) Key {
+func New(oid ulid.ULID, vers *lamport.Scalar) Key {
 	key := make([]byte, keySize)
 	key[0] = keyVersion
-	copy(key[1:17], cid[:])
-	copy(key[17:33], oid[:])
+	copy(key[1:17], oid[:])
 	if vers != nil {
-		binary.BigEndian.PutUint64(key[33:41], vers.VID)
-		binary.BigEndian.PutUint32(key[41:45], vers.PID)
+		binary.BigEndian.PutUint64(key[17:25], vers.VID)
+		binary.BigEndian.PutUint32(key[25:29], vers.PID)
 	}
 	return Key(key)
-}
-
-// Returns the collection ID encoded in the key as a ulid.
-func (k Key) CollectionID() ulid.ULID {
-	if err := k.Check(); err != nil {
-		panic(err)
-	}
-	return ulid.ULID(k[1:17])
 }
 
 // Returns the object ID encoded in the key as a ulid.
@@ -64,7 +55,7 @@ func (k Key) ObjectID() ulid.ULID {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
-	return ulid.ULID(k[17:33])
+	return ulid.ULID(k[1:17])
 }
 
 // Returns the version specified by the key if any (if no version is specified then
@@ -74,29 +65,29 @@ func (k Key) Version() lamport.Scalar {
 		panic(err)
 	}
 	return lamport.Scalar{
-		VID: binary.BigEndian.Uint64(k[33:41]),
-		PID: binary.BigEndian.Uint32(k[41:45]),
+		VID: binary.BigEndian.Uint64(k[17:25]),
+		PID: binary.BigEndian.Uint32(k[25:29]),
 	}
 }
 
-// ObjectPrefix returns the collection and object IDs without any version information.
+// ObjectPrefix returns object IDs without any version information.
 func (k Key) ObjectPrefix() []byte {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
-	return k[0:33]
+	return k[0:17]
 }
 
-// ObjectLimit returns a byte slice with the collection and object ID with the last
-// byte incremented by one. This can be used to create a range query for all versions
-// of an object where the start is the ObjectPrefix.
+// ObjectLimit returns a byte slice with the object ID with the last byte incremented by
+// one. This can be used to create a range query for all versions of an object where the
+// start is the ObjectPrefix.
 func (k Key) ObjectLimit() []byte {
 	if err := k.Check(); err != nil {
 		panic(err)
 	}
-	limit := make([]byte, 33)
-	copy(limit, k[0:33])
-	limit[32]++
+	limit := make([]byte, 17)
+	copy(limit, k[0:17])
+	limit[16]++
 	return limit
 }
 
@@ -108,7 +99,7 @@ func (k Key) HasVersion() bool {
 		panic(err)
 	}
 
-	for i := keySize - 1; i > 32; i-- {
+	for i := keySize - 1; i > 16; i-- {
 		if k[i] != 0 {
 			return true
 		}
