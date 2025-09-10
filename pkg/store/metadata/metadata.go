@@ -38,7 +38,7 @@ var _ lani.Decodable = &Metadata{}
 
 func (o *Metadata) Key() key.Key {
 	if o.key == nil {
-		o.key = key.New(o.CollectionID, o.ObjectID, &o.Version.Scalar)
+		o.key = key.New(o.ObjectID, &o.Version.Scalar)
 	}
 	return o.key
 }

@@ -3,27 +3,23 @@ package store
 import (
 	"bytes"
 
-	"go.rtnl.ai/honu/pkg/store/engine"
+	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/store/key"
-	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/lani"
-	"go.rtnl.ai/honu/pkg/store/locks"
 	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/ulid"
 )
 
 // Collections are subsets of the Store that allow access to related objects. Each
 // object in a collection is prefixed by the collection ID, ensuring that the objects
 // are grouped together and can be accessed efficiently.
 type Collection struct {
-	metadata.Collection
-	pid lamport.PID   `json:"-" msg:"-"`
-	db  engine.Engine `json:"-" msg:"-"`
-	mu  locks.Keys    `json:"-" msg:"-"`
-	key key.Key       `json:"-" msg:"-"`
-}
+	// The key representing the latest version of the collection.
+	// It is not safe to update this outside of a transaction.
+	Key key.Key
 
-var _ lani.Encodable = &Collection{}
-var _ lani.Decodable = &Collection{}
+	meta *metadata.Collection `json:"-" msg:"-"`
+	bck  *bbolt.Bucket        `json:"-" msg:"-"`
+}
 
 //===========================================================================
 // Object Management
@@ -41,6 +37,19 @@ func (c *Collection) List() error {
 // or to actually retrieve the objects in a memory-efficient manner.
 func (c *Collection) Query() error {
 	return nil
+}
+
+// Has returns true if the object with the specified ID has any version (including
+// tombstones) stored in the collection. See Exists() for checking if the latest version
+// of the object is not a tombstone.
+func (c *Collection) Has(id ulid.ULID) (exists bool, err error) {
+	panic("not implemented yet")
+}
+
+// Exists returns true if the object with the specified ID exists in the collection
+// and the latest version is not a tombstone.
+func (c *Collection) Exists(id ulid.ULID) (exists bool, err error) {
+	panic("not implemented yet")
 }
 
 // Empty the collection by adding a tombstone version to all of the objects in the
@@ -111,16 +120,17 @@ func (c *Collection) Destroy() error {
 // Collection Methods
 //===========================================================================
 
+// Meta returns the collection metadata for the collection, caching it for the duration
+// of the transaction. It is deleted when the transaction is closed.
+func (c *Collection) Meta() *metadata.Collection {
+	if c.meta == nil {
+		panic("not implemented yet")
+	}
+	return c.meta
+}
+
 // Returns true if the collection is a system collection, which means it is used
 // internally by the store for management purposes and was not created by a user.
 func (c *Collection) IsSystem() bool {
-	return bytes.HasPrefix(c.ID[:], SystemPrefix[:])
-}
-
-// Key returns the key for the collection metadata in the in the systems collection.
-func (c *Collection) Key() key.Key {
-	if c.key == nil {
-		c.key = key.New(SystemCollections, c.ID, &c.Version.Scalar)
-	}
-	return c.key
+	return bytes.HasPrefix(c.Key[:], SystemPrefix[:])
 }

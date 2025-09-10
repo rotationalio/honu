@@ -4,13 +4,11 @@ import (
 	"errors"
 	"time"
 
+	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/config"
-	"go.rtnl.ai/honu/pkg/store/engine"
-	"go.rtnl.ai/honu/pkg/store/engine/leveldb"
-	"go.rtnl.ai/honu/pkg/store/index"
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/locks"
+	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
@@ -46,11 +44,7 @@ var (
 // associated with the database, and maintains all constraints such as uniqueness.
 type Store struct {
 	pid lamport.PID
-	db  engine.Engine
-	mu  locks.Keys
-
-	collectionNames index.Index[string, ulid.ULID] // Index of collection names to their IDs
-	collections     map[ulid.ULID]*Collection      // In memory collection objects to reduce allocations
+	db  *bbolt.DB
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -61,13 +55,11 @@ type Store struct {
 // to disk.
 func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
-		pid:             lamport.PID(conf.PID),
-		mu:              locks.New(conf.Store.Concurrency),
-		collections:     make(map[ulid.ULID]*Collection),
-		collectionNames: index.Map[string, ulid.ULID](make(map[string]ulid.ULID)),
+		pid: lamport.PID(conf.PID),
 	}
 
-	if s.db, err = leveldb.Open(conf.Store); err != nil {
+	// TODO: better open with options.
+	if s.db, err = bbolt.Open(conf.Store.DataPath, 0600, nil); err != nil {
 		return nil, err
 	}
 
@@ -77,23 +69,20 @@ func Open(conf config.Config) (s *Store, err error) {
 		return nil, err
 	}
 
-	// TODO: should we load the collections from disk here?
 	return s, nil
 }
 
-// Close the store and release all resources associated with it. This will close the
-// underlying database engine and release any locks held by the store.
+// Close the store and release all resources associated with it.
 func (s *Store) Close() error {
-	// Acquire all locks to wait for any ongoing operations to complete and to ensure
-	// that no new operations can start while closing the store.
-	s.mu.LockAll()
-	defer s.mu.UnlockAll()
-
-	// Clean up in-memory items and indexes.
-	s.collections = nil
-	s.collectionNames = nil
-
 	return s.db.Close()
+}
+
+//===========================================================================
+// Transactions Handling
+//===========================================================================
+
+func (s *Store) Begin(writeable bool) (tx *Tx, err error) {
+	return nil, nil
 }
 
 //===========================================================================
@@ -104,50 +93,79 @@ func (s *Store) Close() error {
 // collections that are used for internal database management. Only the metadata is
 // returned for each collection, so any collection operations must be performed after
 // opening the collection by its ID or name.
-func (s *Store) Collections() []metadata.Collection {
-	// TODO: should we check the collections on disk?
-	collections := make([]metadata.Collection, 0, len(s.collections))
-	for _, c := range s.collections {
-		collections = append(collections, c.Collection)
+func (s *Store) Collections() (collections []metadata.Collection, err error) {
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(false); err != nil {
+		return nil, err
 	}
-	return collections
+	defer tx.Rollback()
+
+	var bucket *bbolt.Bucket
+	if bucket = tx.Bucket(SystemCollections[:]); bucket == nil {
+		return nil, errors.New("collections: system collections bucket does not exist")
+	}
+
+	bucket.ForEach(func(k []byte, v []byte) error {
+		var c metadata.Collection
+		if err := lani.Unmarshal(v, &c); err != nil {
+			return err
+		}
+		collections = append(collections, c)
+		return nil
+	})
+
+	return collections, nil
 }
 
 // Creates a new collection with the given name and associates it with a unique ID.
 // The name is case-insensitive and should be unique within the store. It must contain
 // only no spaces or punctuation and cannot start with a number. The name also must not
 // be a ULID string, which is reserved for collection IDs.
-func (s *Store) New(info *metadata.Collection) (_ *Collection, err error) {
+func (s *Store) New(info *metadata.Collection) (err error) {
 	// Validate the info to ensure a collection can be created.
 	if err = info.Validate(); err != nil {
-		return nil, err
+		return err
 	}
 
 	// A collection must not have an ID set.
 	if !info.ID.IsZero() {
-		return nil, ErrCreateID
+		return ErrCreateID
 	}
 
 	// TODO: lock the collection key
 	// TODO: check name in index to ensure uniqueness.
 	// TODO: normalize name to ensure it is valid and does not contain any illegal characters.
 	// TODO: save the collection index to disk.
-	collection := &Collection{
-		Collection: *info,
-
-		pid: s.pid,
-		db:  s.db,
-		mu:  s.mu,
-	}
-
-	s.collections[collection.ID] = collection
-	return collection, nil
+	return nil
 }
 
-// Opens an existing collection either by its ID or by its name. If the collection does
-// not exist, it will return an error. The collection is ready for access when returned.
-func (s *Store) Open(identifier any) (*Collection, error) {
-	return nil, nil
+// Has returns true if the collection with the specified ID or name exists in the store.
+func (s *Store) Has(identifier any) (exists bool, err error) {
+	var collectionID ulid.ULID
+	switch v := identifier.(type) {
+	case string:
+		panic("not implemented yet")
+	case ulid.ULID:
+		collectionID = v
+	default:
+		// TODO: return a better error
+		return false, errors.New("invalid collection identifier")
+	}
+
+	// TODO: handle versions
+	key := key.New(collectionID, &lamport.Scalar{PID: 0, VID: 1})
+	err = s.db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(SystemCollections[:])
+		if b == nil {
+			return nil
+		}
+
+		if v := b.Get(key); v != nil {
+			exists = true
+		}
+		return nil
+	})
+	return exists, err
 }
 
 // Modifies the metadata of an existing collection; the collection should either have
@@ -183,7 +201,7 @@ func (s *Store) Truncate(identifier any) error {
 
 // Returns the underlying engine that the store is using for persistence. This is
 // primarily used for testing and debugging purposes, and should be used with caution.
-func (s *Store) Engine() engine.Engine {
+func (s *Store) DB() *bbolt.DB {
 	return s.db
 }
 
@@ -234,12 +252,26 @@ func (s *Store) initialize() (err error) {
 		},
 	}
 
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(true); err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Get the collections bucket to create the systems collection info in.
+	var collectionsBucket *bbolt.Bucket
+	if collectionsBucket, err = tx.CreateBucketIfNotExists(SystemCollections[:]); err != nil {
+		return err
+	}
+
 	for _, collection := range defaultCollections {
-		collectionKey := key.New(SystemCollections, collection.ID, &collection.Version.Scalar)
+		// System collections are not updated except between versions of honu, so they
+		// can be fetched directly with the hardcoded ID.
+		collectionKey := key.New(collection.ID, &collection.Version.Scalar)
 
 		var exists bool
-		if exists, err = s.db.Has(collectionKey); err != nil {
-			return err
+		if collectionMeta := collectionsBucket.Get(collectionKey); collectionMeta != nil {
+			exists = true
 		}
 
 		if !exists {
@@ -249,11 +281,14 @@ func (s *Store) initialize() (err error) {
 				return err
 			}
 
-			if err = s.db.Put(collectionKey, data); err != nil {
+			if err = collectionsBucket.Put(collectionKey, data); err != nil {
 				return err
 			}
 		}
 	}
 
+	if err = tx.Commit(); err != nil {
+		return err
+	}
 	return nil
 }

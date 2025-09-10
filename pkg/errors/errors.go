@@ -2,6 +2,7 @@ package engine
 
 import "errors"
 
+// Common errors returned by the store package.
 var (
 	ErrNotFound      = errors.New("object not found")
 	ErrReadOnlyDB    = errors.New("cannot execute operation in readonly mode")
