@@ -33,8 +33,8 @@ type Encryption struct {
 	SignatureAlgorithm  EncryptionAlgorithm `json:"signature_algorithm,omitempty" msg:"signature_algorithm,omitempty"`
 }
 
-var _ lani.Encodable = &Encryption{}
-var _ lani.Decodable = &Encryption{}
+var _ lani.Encodable = (*Encryption)(nil)
+var _ lani.Decodable = (*Encryption)(nil)
 
 // The static size of a zero valued Encryption object; see TestEncryptionSize for details.
 const encryptionStaticSize = 43

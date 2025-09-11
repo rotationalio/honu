@@ -21,6 +21,7 @@ type Collection struct {
 	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
 	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
 	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
+	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
 	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
 	Compression  *Compression     `json:"compression,omitempty" msg:"compression,omitempty"`
 	Flags        uint8            `json:"flags" msg:"flags"`
@@ -28,8 +29,8 @@ type Collection struct {
 	Modified     time.Time        `json:"modified" msg:"modified"`
 }
 
-var _ lani.Encodable = &Collection{}
-var _ lani.Decodable = &Collection{}
+var _ lani.Encodable = (*Collection)(nil)
+var _ lani.Decodable = (*Collection)(nil)
 
 // Returns the name of the collection if it is set, otherwise returns the ULID.
 func (c *Collection) String() string {
@@ -48,7 +49,7 @@ func (c *Collection) Validate() (err error) {
 }
 
 // The static size of a zero valued Collection object; see TestCollectionSize for details.
-const collectionStaticSize = 104
+const collectionStaticSize = 105
 
 func (c *Collection) Size() (s int) {
 	s = collectionStaticSize
@@ -79,6 +80,11 @@ func (c *Collection) Size() (s int) {
 	// Publisher size
 	if c.Publisher != nil {
 		s += c.Publisher.Size()
+	}
+
+	// Schema size
+	if c.Schema != nil {
+		s += c.Schema.Size()
 	}
 
 	// Encryption size
@@ -150,6 +156,11 @@ func (c *Collection) Encode(e *lani.Encoder) (n int, err error) {
 	}
 	n += m
 
+	if m, err = e.EncodeStruct(c.Schema); err != nil {
+		return n + m, err
+	}
+	n += m
+
 	if m, err = e.EncodeStruct(c.Encryption); err != nil {
 		return n + m, err
 	}
@@ -182,6 +193,7 @@ func (c *Collection) Decode(d *lani.Decoder) (err error) {
 	// Setup nested structs
 	c.Version = &Version{}
 	c.Publisher = &Publisher{}
+	c.Schema = &SchemaVersion{}
 	c.Encryption = &Encryption{}
 	c.Compression = &Compression{}
 
@@ -240,6 +252,12 @@ func (c *Collection) Decode(d *lani.Decoder) (err error) {
 		return err
 	} else if isNil {
 		c.Publisher = nil
+	}
+
+	if isNil, err = d.DecodeStruct(c.Schema); err != nil {
+		return err
+	} else if isNil {
+		c.Schema = nil
 	}
 
 	if isNil, err = d.DecodeStruct(c.Encryption); err != nil {

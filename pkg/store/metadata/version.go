@@ -19,8 +19,8 @@ type Version struct {
 	Created   time.Time       `json:"created" msg:"created"`
 }
 
-var _ lani.Encodable = &Version{}
-var _ lani.Decodable = &Version{}
+var _ lani.Encodable = (*Version)(nil)
+var _ lani.Decodable = (*Version)(nil)
 
 // The static size of a zero valued Version object; see TestVersionSize for details.
 const versionStaticSize = 12

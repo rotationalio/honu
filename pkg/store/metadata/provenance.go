@@ -18,8 +18,8 @@ type Publisher struct {
 	UserAgent   string    `json:"user_agent,omitempty" msg:"user_agent,omitempty"`
 }
 
-var _ lani.Encodable = &Publisher{}
-var _ lani.Decodable = &Publisher{}
+var _ lani.Encodable = (*Publisher)(nil)
+var _ lani.Decodable = (*Publisher)(nil)
 
 // The static size of a zero valued Publisher object; see TestPublisherSize for details.
 const publisherStaticSize = 52

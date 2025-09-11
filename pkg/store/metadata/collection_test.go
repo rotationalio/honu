@@ -17,7 +17,7 @@ func TestCollectionSize(t *testing.T) {
 	staticSize += 1                         // Version not nil bool
 	staticSize += 16 + 16 + 1               // Owner, Group, and Permissions (ULIDs and uint8)
 	staticSize += 2 * binary.MaxVarintLen64 // Length of ACL and WriteRegions lists
-	staticSize += 3                         // Publisher, Encryption, and Compression not nil bool
+	staticSize += 4                         // Publisher, Schema, Encryption, and Compression not nil bool
 	staticSize += 1                         // Flags
 	staticSize += 2 * binary.MaxVarintLen64 // Created, and Modified (time.Time)
 
@@ -29,7 +29,7 @@ func TestCollectionSize(t *testing.T) {
 	t.Run("VariableSize", func(t *testing.T) {
 		var collection metadata.Collection
 		loadFixture(t, "collection.json", &collection)
-		require.Equal(t, 384, collection.Size(), "expected Collection to have a size of 384 bytes as computed from fixture")
+		require.Equal(t, 414, collection.Size(), "expected Collection to have a size of 414 bytes as computed from fixture")
 	})
 }
 

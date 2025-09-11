@@ -15,8 +15,8 @@ type SchemaVersion struct {
 	Patch uint32 `json:"patch" msg:"patch"`
 }
 
-var _ lani.Encodable = &SchemaVersion{}
-var _ lani.Decodable = &SchemaVersion{}
+var _ lani.Encodable = (*SchemaVersion)(nil)
+var _ lani.Decodable = (*SchemaVersion)(nil)
 
 // The static size of a zero valued SchemaVersion object; see TestSchemaVersionSize for details.
 const schemaVersionStaticSize = 25

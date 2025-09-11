@@ -1,11 +1,12 @@
 package store
 
 import (
-	"errors"
+	"bytes"
 	"time"
 
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/config"
+	"go.rtnl.ai/honu/pkg/errors"
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/lani"
@@ -74,15 +75,42 @@ func Open(conf config.Config) (s *Store, err error) {
 
 // Close the store and release all resources associated with it.
 func (s *Store) Close() error {
-	return s.db.Close()
+	err := s.db.Close()
+	s.db = nil
+	return err
 }
 
 //===========================================================================
 // Transactions Handling
 //===========================================================================
 
-func (s *Store) Begin(writeable bool) (tx *Tx, err error) {
-	return nil, nil
+// Begin starts a new transaction. Multiple read-only transactions can be used
+// concurrently but only one write transaction can be used at a time. Starting multiple
+// write transactions will cause the calls to block and be serialized until the current
+// write transaction finishes.
+//
+// Transactions must be either committed or rolled back when they are no longer needed
+// to release the associated resources. If a transaction is not committed or rolled
+// back, pages in the database will not be freed and other transactions may be remain
+// deadlocked.
+func (s *Store) Begin(opts *TxOptions) (tx *Tx, err error) {
+	if s.db == nil {
+		return nil, errors.ErrClosed
+	}
+
+	if opts == nil {
+		opts = &TxOptions{}
+	}
+
+	tx = &Tx{
+		opts: opts,
+	}
+
+	if tx.tx, err = s.db.Begin(!opts.ReadOnly); err != nil {
+		return nil, err
+	}
+
+	return tx, nil
 }
 
 //===========================================================================
@@ -105,9 +133,14 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 		return nil, errors.New("collections: system collections bucket does not exist")
 	}
 
-	bucket.ForEach(func(k []byte, v []byte) error {
+	bucket.ForEach(func(key, data []byte) error {
+		// Skip system collections.
+		if bytes.HasPrefix(key, SystemPrefix[:]) {
+			return nil
+		}
+
 		var c metadata.Collection
-		if err := lani.Unmarshal(v, &c); err != nil {
+		if err := lani.Unmarshal(data, &c); err != nil {
 			return err
 		}
 		collections = append(collections, c)

@@ -27,8 +27,8 @@ type Compression struct {
 	Level     int64                `json:"level,omitempty" msg:"level,omitempty"`
 }
 
-var _ lani.Encodable = &Compression{}
-var _ lani.Decodable = &Compression{}
+var _ lani.Encodable = (*Compression)(nil)
+var _ lani.Decodable = (*Compression)(nil)
 
 // The static size of a zero valued Compression object; see TestCompressionSize for details.
 const compressionStaticSize = 11
