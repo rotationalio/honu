@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"fmt"
 	"time"
 
 	"go.etcd.io/bbolt"
@@ -15,15 +16,18 @@ import (
 	"go.rtnl.ai/ulid"
 )
 
-// System collections are used for internal database management and are not named but
+// System collections, indexes, and users are used for internal database management and
 // are directly identified by a unique ID that is less than any ULID that would be
-// generated since they are before
+// generated since they are before March 20, 1984 (and all ULIDs should be generated
+// after September, 2025). These IDs are hardcoded to ensure that they are always
+// available and do not change between database instances.
 var (
-	SystemPrefix        = [5]byte{0x00, 0x68, 0x6f, 0x6e, 0x75}
-	SystemHonuAgent     = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x68, 0x6f, 0x6e, 0x75, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x00})
-	SystemCollections   = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e})
-	SystemReplicas      = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x01, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6c, 0x69, 0x73, 0x74})
-	SystemAccessControl = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x02, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67})
+	SystemPrefix          = [5]byte{0x00, 0x68, 0x6f, 0x6e, 0x75}
+	SystemHonuAgent       = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x68, 0x6f, 0x6e, 0x75, 0x61, 0x67, 0x65, 0x6e, 0x74, 0x00})
+	SystemCollections     = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e})
+	SystemReplicas        = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x01, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x6c, 0x69, 0x73, 0x74})
+	SystemAccessControl   = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x02, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67})
+	SystemCollectionNames = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6e, 0x61, 0x6d, 0x65, 0x69, 0x64, 0x78})
 )
 
 // Collection or store related errors.
@@ -44,8 +48,9 @@ var (
 // serialized through the store. Additionally the Store maintains all of the indexes
 // associated with the database, and maintains all constraints such as uniqueness.
 type Store struct {
-	pid lamport.PID
-	db  *bbolt.DB
+	conf config.StoreConfig
+	pid  lamport.PID
+	db   *bbolt.DB
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -56,7 +61,8 @@ type Store struct {
 // to disk.
 func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
-		pid: lamport.PID(conf.PID),
+		conf: conf.Store,
+		pid:  lamport.PID(conf.PID),
 	}
 
 	// TODO: better open with options.
@@ -66,6 +72,12 @@ func Open(conf config.Config) (s *Store, err error) {
 
 	// Ensure the database is initialized and ready for use.
 	if err = s.initialize(); err != nil {
+		s.db.Close()
+		return nil, err
+	}
+
+	// Check that the database in in a ready state.
+	if err = s.check(); err != nil {
 		s.db.Close()
 		return nil, err
 	}
@@ -242,11 +254,9 @@ func (s *Store) DB() *bbolt.DB {
 // Initialization
 //===========================================================================
 
-func (s *Store) initialize() (err error) {
-	// Ensures that the system collections are created and initialized in the store and
-	// that the system user is created with the correct permissions.
+func defaultCollections() []*metadata.Collection {
 	now := time.Now()
-	defaultCollections := []*metadata.Collection{
+	return []*metadata.Collection{
 		{
 			ID:   SystemCollections,
 			Name: "honu_collections",
@@ -254,8 +264,25 @@ func (s *Store) initialize() (err error) {
 				Scalar:  lamport.Scalar{PID: 0, VID: 1}, // This is the default first version for system collections.
 				Created: now,
 			},
-			Owner:    SystemHonuAgent,
-			Group:    SystemHonuAgent,
+			Owner: SystemHonuAgent,
+			Group: SystemHonuAgent,
+			Indexes: []*metadata.Index{
+				{
+					ID:   SystemCollectionNames,
+					Name: "honu_collections_unique_name",
+					Type: metadata.UNIQUE,
+					Field: &metadata.Field{
+						Name:       "name",
+						Type:       metadata.StringField,
+						Collection: SystemCollections,
+					},
+					Ref: &metadata.Field{
+						Name:       "id",
+						Type:       metadata.ULIDField,
+						Collection: SystemCollections,
+					},
+				},
+			},
 			Created:  now,
 			Modified: now,
 		},
@@ -284,17 +311,28 @@ func (s *Store) initialize() (err error) {
 			Modified: now,
 		},
 	}
+}
+
+func (s *Store) initialize() (err error) {
+	if s.conf.ReadOnly {
+		// If the store is read-only, do not attempt to initialize it.
+		return nil
+	}
+
+	// Ensures that the system collections are created and initialized in the store and
+	// that the system user is created with the correct permissions.
+	defaultCollections := defaultCollections()
 
 	var tx *bbolt.Tx
 	if tx, err = s.db.Begin(true); err != nil {
-		return err
+		return fmt.Errorf("could not begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	// Get the collections bucket to create the systems collection info in.
 	var collectionsBucket *bbolt.Bucket
 	if collectionsBucket, err = tx.CreateBucketIfNotExists(SystemCollections[:]); err != nil {
-		return err
+		return fmt.Errorf("could not create system collections bucket: %w", err)
 	}
 
 	for _, collection := range defaultCollections {
@@ -311,17 +349,74 @@ func (s *Store) initialize() (err error) {
 			// Encode the collection metadata to store it in the database.
 			var data object.Object
 			if data, err = object.MarshalSystem(collection); err != nil {
-				return err
+				return fmt.Errorf("could not marshal collection metadata %s: %w", collection.Name, err)
 			}
 
 			if err = collectionsBucket.Put(collectionKey, data); err != nil {
-				return err
+				return fmt.Errorf("could not store collection metadata %s: %w", collection.Name, err)
+			}
+		}
+
+		// Create the bucket for the collection itself to hold its objects.
+		var cbckt *bbolt.Bucket
+		if cbckt, err = tx.CreateBucketIfNotExists(collection.ID[:]); err != nil {
+			return fmt.Errorf("could not create collection bucket %s: %w", collection.Name, err)
+		}
+
+		// If indexes are defined on the collection, ensure they are created.
+		for _, idx := range collection.Indexes {
+			if _, err = cbckt.CreateBucketIfNotExists(idx.ID[:]); err != nil {
+				return fmt.Errorf("could not create index %s in %s: %w", idx.Name, collection.Name, err)
 			}
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return err
+		return fmt.Errorf("could not commit initialize transaction: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) check() (err error) {
+	// Ensure that the system collections and indexes exist in the database.
+	defaultCollections := defaultCollections()
+
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(false); err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get the collections bucket to check the systems collection info in.
+	var collectionsBucket *bbolt.Bucket
+	if collectionsBucket = tx.Bucket(SystemCollections[:]); collectionsBucket == nil {
+		return fmt.Errorf("missing bucket %s for system collections", SystemCollections)
+	}
+
+	for _, collection := range defaultCollections {
+		// System collections are not updated except between versions of honu, so they
+		// can be fetched directly with the hardcoded ID.
+		collectionKey := key.New(collection.ID, &collection.Version.Scalar)
+
+		if meta := collectionsBucket.Get(collectionKey); meta == nil {
+			err = errors.Join(err, fmt.Errorf("missing metadata for collection %s (%s)", collection.Name, collection.ID))
+			continue
+		}
+
+		// Ensure the bucket for the collection itself exists to hold its objects.
+		var cbckt *bbolt.Bucket
+		if cbckt = tx.Bucket(collection.ID[:]); cbckt == nil {
+			err = errors.Join(err, fmt.Errorf("missing bucket for collection %s (%s)", collection.Name, collection.ID))
+			continue
+		}
+
+		// If indexes are defined on the collection, ensure they are created.
+		for _, idx := range collection.Indexes {
+			if ibckt := cbckt.Bucket(idx.ID[:]); ibckt == nil {
+				err = errors.Join(err, fmt.Errorf("missing index bucket %s in %s", idx.Name, collection.Name))
+			}
+		}
+	}
+
+	return err
 }

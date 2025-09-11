@@ -158,6 +158,7 @@ func Example_system_names() {
 		store.SystemCollections,
 		store.SystemReplicas,
 		store.SystemAccessControl,
+		store.SystemCollectionNames,
 	}
 
 	for _, sysid := range systemIDs {
@@ -172,6 +173,7 @@ func Example_system_names() {
 	// honu collection (1984-03-19T12:08:28Z)
 	// honu accesslist (1984-03-19T12:08:28Z)
 	// honu networking (1984-03-19T12:08:28Z)
+	// honu colnameidx (1984-03-19T12:08:28Z)
 }
 
 func TestInitializedEmpty(t *testing.T) {
