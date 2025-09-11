@@ -4,12 +4,10 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 )
 
-func TestCollectionSize(t *testing.T) {
+func TestCollection(t *testing.T) {
 	// Compute the static size of the Collection struct
 	var staticSize int
 	staticSize += 16                        // ID (ULID) is fixed length.
@@ -21,27 +19,16 @@ func TestCollectionSize(t *testing.T) {
 	staticSize += 1                         // Flags
 	staticSize += 2 * binary.MaxVarintLen64 // Created, and Modified (time.Time)
 
-	t.Run("StaticSize", func(t *testing.T) {
-		collection := &metadata.Collection{}
-		require.Equal(t, staticSize, collection.Size(), "expected zero valued Collection to have a static size of %d bytes", staticSize)
-	})
+	// Create a test generic case and execute the tests
+	testCase := &TestCase{
+		Name:        "Collection",
+		Fixture:     "collection.json",
+		StaticSize:  staticSize,
+		FixtureSize: 414,
+		New:         func() TestObject { return &metadata.Collection{} },
+	}
 
-	t.Run("VariableSize", func(t *testing.T) {
-		var collection metadata.Collection
-		loadFixture(t, "collection.json", &collection)
-		require.Equal(t, 414, collection.Size(), "expected Collection to have a size of 414 bytes as computed from fixture")
-	})
-}
-
-func TestCollectionSerialization(t *testing.T) {
-	var obj *metadata.Collection
-	loadFixture(t, "collection.json", &obj)
-
-	data, err := lani.Marshal(obj)
-	require.NoError(t, err, "could not marshal Collection")
-
-	cmp := &metadata.Collection{}
-	err = lani.Unmarshal(data, cmp)
-	require.NoError(t, err, "could not unmarshal Collection")
-	require.Equal(t, obj, cmp, "deserialized Collection does not match original")
+	t.Run("StaticSize", testCase.TestStaticSize)
+	t.Run("VariableSize", testCase.TestVariableSize)
+	t.Run("Serialization", testCase.TestSerialization)
 }

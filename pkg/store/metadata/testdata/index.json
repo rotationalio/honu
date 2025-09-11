@@ -1,0 +1,15 @@
+{
+  "id": "01K4X59HG43HF3FFV6TP3ACNWP",
+  "name": "test_index",
+  "type": "FOREIGN_KEY",
+  "field": {
+    "name": "author_id",
+    "type": "string",
+    "collection": "01K4X5823CW3P81F3HW8QA94BD"
+  },
+  "ref": {
+    "name": "id",
+    "type": "string",
+    "collection": "01K4X595ZVB1CWEA1ZP01FKCR9"
+  }
+}

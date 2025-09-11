@@ -33,7 +33,7 @@ var _ lani.Encodable = (*Field)(nil)
 var _ lani.Decodable = (*Field)(nil)
 
 // The static size of a zero valued Field object; see TestFieldSize for details.
-const fieldStaticSize = 17
+const fieldStaticSize = 27
 
 func (o *Field) Size() int {
 	return fieldStaticSize + len(o.Name)
@@ -99,7 +99,7 @@ func (t FieldType) String() string {
 	return ""
 }
 
-func (t *FieldType) MarshalJSON() ([]byte, error) {
+func (t FieldType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.String())
 }
 
@@ -112,4 +112,8 @@ func (t *FieldType) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 	return nil
+}
+
+func (t FieldType) Value() uint8 {
+	return uint8(t)
 }

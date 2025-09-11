@@ -16,8 +16,8 @@ type Index struct {
 	ID    ulid.ULID `json:"id" msg:"id"`
 	Name  string    `json:"name" msg:"name"`
 	Type  IndexType `json:"type" msg:"type"`
-	Field Field     `json:"field" msg:"field"`
-	Ref   Field     `json:"ref" msg:"ref"`
+	Field *Field    `json:"field" msg:"field"`
+	Ref   *Field    `json:"ref" msg:"ref"`
 }
 
 type IndexType uint8
@@ -42,10 +42,17 @@ var _ lani.Encodable = (*Index)(nil)
 var _ lani.Decodable = (*Index)(nil)
 
 // The static size of a zero valued Index object; see TestIndexSize for details.
-const indexStaticSize = 11
+const indexStaticSize = 29
 
 func (o *Index) Size() int {
-	return indexStaticSize + len(o.Name)
+	size := indexStaticSize + len(o.Name)
+	if o.Field != nil {
+		size += o.Field.Size()
+	}
+	if o.Ref != nil {
+		size += o.Ref.Size()
+	}
+	return size
 }
 
 func (o *Index) Encode(e *lani.Encoder) (n int, err error) {
@@ -65,10 +72,24 @@ func (o *Index) Encode(e *lani.Encoder) (n int, err error) {
 	}
 	n += m
 
+	if m, err = e.EncodeStruct(o.Field); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	if m, err = e.EncodeStruct(o.Ref); err != nil {
+		return n + m, err
+	}
+	n += m
+
 	return n, nil
 }
 
 func (o *Index) Decode(d *lani.Decoder) (err error) {
+	// Setup nested structs
+	o.Field = &Field{}
+	o.Ref = &Field{}
+
 	if o.ID, err = d.DecodeULID(); err != nil {
 		return err
 	}
@@ -82,6 +103,18 @@ func (o *Index) Decode(d *lani.Decoder) (err error) {
 		return err
 	}
 	o.Type = IndexType(t)
+
+	if isNil, err := d.DecodeStruct(o.Field); err != nil {
+		return err
+	} else if isNil {
+		o.Field = nil
+	}
+
+	if isNil, err := d.DecodeStruct(o.Ref); err != nil {
+		return err
+	} else if isNil {
+		o.Ref = nil
+	}
 
 	return nil
 }
@@ -116,4 +149,8 @@ func (t *IndexType) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 	return nil
+}
+
+func (t IndexType) Value() uint8 {
+	return uint8(t)
 }

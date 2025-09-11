@@ -2,17 +2,13 @@ package metadata_test
 
 import (
 	"encoding/binary"
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.rtnl.ai/honu/pkg/store/lani"
 	. "go.rtnl.ai/honu/pkg/store/metadata"
 )
 
-func TestMetadataSize(t *testing.T) {
+func TestMetadata(t *testing.T) {
 	// Compute the static size of the Metadata struct
 	var staticSize int
 	staticSize += 16 + 16                   // ObjectID and CollectionID (ULIDs) are fixed length.
@@ -24,29 +20,18 @@ func TestMetadataSize(t *testing.T) {
 	staticSize += 1                         // Flags
 	staticSize += 2 * binary.MaxVarintLen64 // Created, and Modified (time.Time)
 
-	t.Run("StaticSize", func(t *testing.T) {
-		metadata := &Metadata{}
-		require.Equal(t, staticSize, metadata.Size(), "expected zero valued metadata to have a static size of %d bytes", staticSize)
-	})
+	// Create a test generic case and execute the tests
+	testCase := &TestCase{
+		Name:        "Metadata",
+		Fixture:     "metadata.json",
+		StaticSize:  staticSize,
+		FixtureSize: 573,
+		New:         func() TestObject { return &Metadata{} },
+	}
 
-	t.Run("VariableSize", func(t *testing.T) {
-		var metadata Metadata
-		loadFixture(t, "metadata.json", &metadata)
-		require.Equal(t, 573, metadata.Size(), "expected metadata to have a size of 573 bytes as computed from fixture")
-	})
-}
-
-func TestMetadataSerialization(t *testing.T) {
-	var obj *Metadata
-	loadFixture(t, "metadata.json", &obj)
-
-	data, err := lani.Marshal(obj)
-	require.NoError(t, err, "could not marshal metdata")
-
-	cmp := &Metadata{}
-	err = lani.Unmarshal(data, cmp)
-	require.NoError(t, err, "could not unmarshal metdata")
-	require.Equal(t, obj, cmp, "deserialized metdata does not match original")
+	t.Run("StaticSize", testCase.TestStaticSize)
+	t.Run("VariableSize", testCase.TestVariableSize)
+	t.Run("Serialization", testCase.TestSerialization)
 }
 
 func TestMetadataKey(t *testing.T) {
@@ -56,14 +41,4 @@ func TestMetadataKey(t *testing.T) {
 	key := obj.Key()
 	require.Equal(t, obj.ObjectID, key.ObjectID())
 	require.Equal(t, obj.Version.Scalar, key.Version())
-}
-
-func loadFixture(t *testing.T, name string, v interface{}) {
-	path := filepath.Join("testdata", name)
-	f, err := os.Open(path)
-	require.NoError(t, err, "could not open %s", path)
-	defer f.Close()
-
-	err = json.NewDecoder(f).Decode(v)
-	require.NoError(t, err, "could not decode %s", path)
 }

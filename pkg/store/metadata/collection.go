@@ -206,7 +206,7 @@ func (c *Collection) Decode(d *lani.Decoder) (err error) {
 	}
 
 	var isNil bool
-	if isNil, err = d.DecodeStruct(c.Version); err != nil {
+	if isNil, err := d.DecodeStruct(c.Version); err != nil {
 		return err
 	} else if isNil {
 		c.Version = nil
