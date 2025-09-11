@@ -17,6 +17,7 @@ func TestCollection(t *testing.T) {
 	staticSize += 2 * binary.MaxVarintLen64 // Length of ACL and WriteRegions lists
 	staticSize += 4                         // Publisher, Schema, Encryption, and Compression not nil bool
 	staticSize += 1                         // Flags
+	staticSize += binary.MaxVarintLen64     // Length of Indexes list
 	staticSize += 2 * binary.MaxVarintLen64 // Created, and Modified (time.Time)
 
 	// Create a test generic case and execute the tests
@@ -24,7 +25,7 @@ func TestCollection(t *testing.T) {
 		Name:        "Collection",
 		Fixture:     "collection.json",
 		StaticSize:  staticSize,
-		FixtureSize: 414,
+		FixtureSize: 643,
 		New:         func() TestObject { return &metadata.Collection{} },
 	}
 

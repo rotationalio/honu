@@ -17,14 +17,15 @@ type Collection struct {
 	Version      *Version         `json:"version" msg:"version"`
 	Owner        ulid.ULID        `json:"owner" msg:"owner"`
 	Group        ulid.ULID        `json:"group" msg:"group"`
-	Permissions  uint8            `json:"permissions" msg:"permissions"`
+	Permissions  uint8            `json:"permissions,omitempty" msg:"permissions,omitempty"`
 	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
 	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
 	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
 	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
 	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
 	Compression  *Compression     `json:"compression,omitempty" msg:"compression,omitempty"`
-	Flags        uint8            `json:"flags" msg:"flags"`
+	Flags        uint8            `json:"flags,omitempty" msg:"flags,omitempty"`
+	Indexes      []*Index         `json:"indexes,omitempty" msg:"indexes,omitempty"`
 	Created      time.Time        `json:"created" msg:"created"`
 	Modified     time.Time        `json:"modified" msg:"modified"`
 }
@@ -49,7 +50,7 @@ func (c *Collection) Validate() (err error) {
 }
 
 // The static size of a zero valued Collection object; see TestCollectionSize for details.
-const collectionStaticSize = 105
+const collectionStaticSize = 115
 
 func (c *Collection) Size() (s int) {
 	s = collectionStaticSize
@@ -95,6 +96,15 @@ func (c *Collection) Size() (s int) {
 	// Compression size
 	if c.Compression != nil {
 		s += c.Compression.Size()
+	}
+
+	// Indexes List
+	s += len(c.Indexes) * binary.MaxVarintLen64
+	for _, idx := range c.Indexes {
+		s += 1
+		if idx != nil {
+			s += idx.Size()
+		}
 	}
 
 	return
@@ -175,6 +185,20 @@ func (c *Collection) Encode(e *lani.Encoder) (n int, err error) {
 		return n + m, err
 	}
 	n += m
+
+	// Encode Index length
+	if m, err = e.EncodeUint64(uint64(len(c.Indexes))); err != nil {
+		return n + m, err
+	}
+	n += m
+
+	// Encode each Index entry
+	for _, idx := range c.Indexes {
+		if m, err = e.EncodeStruct(idx); err != nil {
+			return n + m, err
+		}
+		n += m
+	}
 
 	if m, err = e.EncodeTime(c.Created); err != nil {
 		return n + m, err
@@ -274,6 +298,26 @@ func (c *Collection) Decode(d *lani.Decoder) (err error) {
 
 	if c.Flags, err = d.DecodeUint8(); err != nil {
 		return err
+	}
+
+	// Read the number of Indexes stored
+	var nIndexes uint64
+	if nIndexes, err = d.DecodeUint64(); err != nil {
+		return err
+	}
+
+	// Decode all Indexes
+	if nIndexes > 0 {
+		c.Indexes = make([]*Index, nIndexes)
+		for i := uint64(0); i < nIndexes; i++ {
+			c.Indexes[i] = &Index{}
+			if isNil, err = d.DecodeStruct(c.Indexes[i]); err != nil {
+				return err
+			}
+			if isNil {
+				c.Indexes[i] = nil
+			}
+		}
 	}
 
 	if c.Created, err = d.DecodeTime(); err != nil {
