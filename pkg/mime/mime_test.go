@@ -15,6 +15,7 @@ func TestStringParse(t *testing.T) {
 		TEXT,
 		JSON,
 		MSGPACK,
+		HONU,
 	}
 
 	for i, tc := range testCases {
@@ -44,6 +45,7 @@ func TestContentType(t *testing.T) {
 			ANY,
 			OCTET_STREAM,
 			MSGPACK,
+			HONU,
 		}
 
 		for i, tc := range testCases {

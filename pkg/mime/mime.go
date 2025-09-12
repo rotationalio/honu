@@ -12,6 +12,7 @@ const (
 	TEXT
 	JSON
 	MSGPACK
+	HONU
 )
 
 const (
@@ -25,6 +26,7 @@ const (
 	mtOCTET_STREAM = "application/octet-stream"
 	mtMSGPACK      = "application/msgpack"
 	mtJSON         = "application/json"
+	mtHonu         = "application/honu+lani"
 )
 
 var mimeValues = map[MIME]string{
@@ -33,6 +35,7 @@ var mimeValues = map[MIME]string{
 	TEXT:         mtTEXT,
 	JSON:         mtJSON,
 	MSGPACK:      mtMSGPACK,
+	HONU:         mtHonu,
 }
 
 var mimeNames = map[string]MIME{
@@ -41,6 +44,7 @@ var mimeNames = map[string]MIME{
 	mtTEXT:         TEXT,
 	mtJSON:         JSON,
 	mtMSGPACK:      MSGPACK,
+	mtHonu:         HONU,
 }
 
 type MIME uint16

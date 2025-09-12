@@ -174,7 +174,7 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 // only no spaces or punctuation and cannot start with a number.
 //
 // This method will set the collection version, ID, creation, and modification time;
-// any data already set in the collection info will be overriden without error.
+// any data already set in the collection info will be overridden without error.
 //
 // Any indexes defined on the collection will be created when the collection is created.
 // TODO: check permissions and ACLs to ensure the user is allowed to create the collection.

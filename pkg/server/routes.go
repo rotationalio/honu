@@ -22,6 +22,20 @@ func (s *Server) setupRoutes() (err error) {
 	// Status/Heartbeat endpoint
 	s.addRoute(http.MethodGet, "/v1/status", s.Status, middleware...)
 
+	// Collections resource
+	s.addRoute(http.MethodGet, "/v1/collections", s.ListCollections, middleware...)
+	s.addRoute(http.MethodPost, "/v1/collections", s.CreateCollection, middleware...)
+	s.addRoute(http.MethodGet, "/v1/collections/:collectionID", s.RetrieveCollection, middleware...)
+	s.addRoute(http.MethodPut, "/v1/collections/:collectionID", s.UpdateCollection, middleware...)
+	s.addRoute(http.MethodDelete, "/v1/collections/:collectionID", s.DeleteCollection, middleware...)
+
+	// Indexes resource
+	s.addRoute(http.MethodGet, "/v1/collections/:collectionID/indexes", s.ListIndexes, middleware...)
+	s.addRoute(http.MethodPost, "/v1/collections/:collectionID/indexes", s.CreateIndex, middleware...)
+	s.addRoute(http.MethodGet, "/v1/collections/:collectionID/indexes/:indexID", s.RetrieveIndex, middleware...)
+	s.addRoute(http.MethodPut, "/v1/collections/:collectionID/indexes/:indexID", s.UpdateIndex, middleware...)
+	s.addRoute(http.MethodDelete, "/v1/collections/:collectionID/indexes/:indexID", s.DeleteIndex, middleware...)
+
 	return nil
 }
 
