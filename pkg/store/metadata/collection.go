@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
@@ -45,8 +46,32 @@ func (c *Collection) Validate() (err error) {
 	if err = ValidateName(c.Name); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+// Modifies the current collection in place to be a tombstone version, removing all
+// non-essential fields and updating the version as a tombstone version.
+// NOTE: ID, name, owner, group, created, and modified are preserved.
+func (c *Collection) Tombstone(pid lamport.PID, region string) {
+	tombstone := &Version{
+		Scalar:    pid.Next(&c.Version.Scalar),
+		Region:    region,
+		Parent:    &c.Version.Scalar,
+		Tombstone: true,
+		Created:   time.Now(),
+	}
+
+	c.Version = tombstone
+	c.Permissions = 0
+	c.ACL = nil
+	c.WriteRegions = nil
+	c.Publisher = nil
+	c.Schema = nil
+	c.Encryption = nil
+	c.Compression = nil
+	c.Flags = 0
+	c.Indexes = nil
+	c.Modified = tombstone.Created
 }
 
 // The static size of a zero valued Collection object; see TestCollectionSize for details.

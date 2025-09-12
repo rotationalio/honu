@@ -104,10 +104,14 @@ func (s *honuTestSuite) TestInitialized() {
 		store.SystemAccessControl,
 	}
 
+	tx, err := db.Begin(false)
+	require.NoError(err, "could not begin read-only transaction")
+	defer tx.Rollback()
+
+	// Ensure all of the collection buckets exist.
 	for _, collection := range collections {
-		exists, err := s.store.Has(collection)
-		require.NoError(err, "failed to check if collection exists")
-		require.True(exists, "collection %s should exist", collection)
+		bucket := tx.Bucket(collection[:])
+		require.NotNil(bucket, "collection bucket %s should exist", collection)
 	}
 }
 

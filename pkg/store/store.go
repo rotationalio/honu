@@ -48,9 +48,10 @@ var (
 // serialized through the store. Additionally the Store maintains all of the indexes
 // associated with the database, and maintains all constraints such as uniqueness.
 type Store struct {
-	conf config.StoreConfig
-	pid  lamport.PID
-	db   *bbolt.DB
+	conf   config.StoreConfig
+	region string
+	pid    lamport.PID
+	db     *bbolt.DB
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -114,6 +115,11 @@ func (s *Store) Begin(opts *TxOptions) (tx *Tx, err error) {
 		opts = &TxOptions{}
 	}
 
+	// ReadOnly checks
+	if s.conf.ReadOnly && !opts.ReadOnly {
+		return nil, errors.ErrReadOnlyDB
+	}
+
 	tx = &Tx{
 		opts: opts,
 	}
@@ -133,6 +139,7 @@ func (s *Store) Begin(opts *TxOptions) (tx *Tx, err error) {
 // collections that are used for internal database management. Only the metadata is
 // returned for each collection, so any collection operations must be performed after
 // opening the collection by its ID or name.
+// TODO: check permissions and ACLs to ensure the user is allowed to read collections.
 func (s *Store) Collections() (collections []metadata.Collection, err error) {
 	var tx *bbolt.Tx
 	if tx, err = s.db.Begin(false); err != nil {
@@ -164,9 +171,19 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 
 // Creates a new collection with the given name and associates it with a unique ID.
 // The name is case-insensitive and should be unique within the store. It must contain
-// only no spaces or punctuation and cannot start with a number. The name also must not
-// be a ULID string, which is reserved for collection IDs.
+// only no spaces or punctuation and cannot start with a number.
+//
+// This method will set the collection version, ID, creation, and modification time;
+// any data already set in the collection info will be overriden without error.
+//
+// Any indexes defined on the collection will be created when the collection is created.
+// TODO: check permissions and ACLs to ensure the user is allowed to create the collection.
 func (s *Store) New(info *metadata.Collection) (err error) {
+	// Readonly checks
+	if s.conf.ReadOnly {
+		return errors.ErrReadOnlyDB
+	}
+
 	// Validate the info to ensure a collection can be created.
 	if err = info.Validate(); err != nil {
 		return err
@@ -177,58 +194,215 @@ func (s *Store) New(info *metadata.Collection) (err error) {
 		return ErrCreateID
 	}
 
-	// TODO: lock the collection key
-	// TODO: check name in index to ensure uniqueness.
-	// TODO: normalize name to ensure it is valid and does not contain any illegal characters.
-	// TODO: save the collection index to disk.
-	return nil
+	// Update the collection info to set the ID and creation time.
+	info.ID = ulid.MakeSecure()
+	info.Version = &metadata.Version{
+		Scalar:    s.pid.Next(nil),
+		Region:    s.region,
+		Parent:    nil,
+		Tombstone: false,
+		Created:   time.Now(),
+	}
+	info.Created = info.Version.Created
+	info.Modified = info.Version.Created
+
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(true); err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get the collections bucket to create the new collection info in.
+	// No nil checks are required because if not initialized correctly a nil panic will occur.
+	collections := tx.Bucket(SystemCollections[:])
+	nameIndex := collections.Bucket(SystemCollectionNames[:])
+
+	// Ensure the collection name is unique by checking the name index.
+	// NOTE: the collection ID should be unique by ULID generation.
+	if v := nameIndex.Get([]byte(info.Name)); v != nil {
+		return errors.ErrCollectionExists
+	}
+
+	// Add name to the name index.
+	if err = nameIndex.Put([]byte(info.Name), info.ID[:]); err != nil {
+		return fmt.Errorf("could not index collection name %s: %w", info.Name, err)
+	}
+
+	// Encode the collection metadata to store in the database.
+	var data object.Object
+	if data, err = object.MarshalSystem(info); err != nil {
+		return fmt.Errorf("could not marshal collection metadata %s: %w", info.Name, err)
+	}
+
+	// Store the collection metadata in the collections bucket.
+	key := key.New(info.ID, &info.Version.Scalar)
+	if err = collections.Put(key, data); err != nil {
+		return fmt.Errorf("could not store collection metadata %s: %w", info.Name, err)
+	}
+
+	// Create the bucket for the collection itself to hold its objects.
+	var bucket *bbolt.Bucket
+	if bucket, err = tx.CreateBucketIfNotExists(info.ID[:]); err != nil {
+		return fmt.Errorf("could not create collection bucket %s: %w", info.Name, err)
+	}
+
+	// If indexes are defined on the collection, ensure they are created.
+	for _, idx := range info.Indexes {
+		if _, err = bucket.CreateBucket(idx.ID[:]); err != nil {
+			return fmt.Errorf("could not create index %s in %s: %w", idx.Name, info.Name, err)
+		}
+	}
+
+	return tx.Commit()
 }
 
 // Has returns true if the collection with the specified ID or name exists in the store.
+// TODO: check permissions and ACLs to ensure the user is allowed to read the collection.
 func (s *Store) Has(identifier any) (exists bool, err error) {
-	var collectionID ulid.ULID
-	switch v := identifier.(type) {
-	case string:
-		panic("not implemented yet")
-	case ulid.ULID:
-		collectionID = v
-	default:
-		// TODO: return a better error
-		return false, errors.New("invalid collection identifier")
+	var (
+		collectionID   ulid.ULID
+		collectionName string
+	)
+
+	// Returns an error if either the ID or name is zero valued, the name is not a
+	// valid collection name, or the ID is a system collection ID.
+	if collectionID, collectionName, err = collectionIdentifier(identifier); err != nil {
+		return false, err
 	}
 
-	// TODO: handle versions
-	key := key.New(collectionID, &lamport.Scalar{PID: 0, VID: 1})
-	err = s.db.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket(SystemCollections[:])
-		if b == nil {
-			return nil
-		}
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(false); err != nil {
+		return false, fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-		if v := b.Get(key); v != nil {
-			exists = true
+	collections := tx.Bucket(SystemCollections[:])
+
+	// If a name was provided, look up the ID first.
+	if collectionID.IsZero() {
+		nameIndex := collections.Bucket(SystemCollectionNames[:])
+		if v := nameIndex.Get([]byte(collectionName)); v != nil {
+			copy(collectionID[:], v)
+		} else {
+			return false, nil
 		}
-		return nil
-	})
+	}
+
+	// collectionID is the prefix, we need to look to see if any objects start with
+	// that prefix, because that will indicate that there is at least one version of
+	// the collection stored in the database.
+	cursor := collections.Cursor()
+	key, _ := cursor.Seek(collectionID[:])
+	exists = key != nil && bytes.HasPrefix(key, collectionID[:])
+
 	return exists, err
 }
 
 // Modifies the metadata of an existing collection; the collection should either have
 // an ID or a name for reference and must already exist in the store.
 func (s *Store) Modify(info *metadata.Collection) error {
-	// Validate the info to ensure a collection can be modified.
-	if err := info.Validate(); err != nil {
-		return err
-	}
-
-	return nil
+	return errors.ErrNotImplemented
 }
 
 // Drop a collection, removing it from the store and deleting all of its contained
 // objects. The collection can be recreated later with the same name, but all of the
 // previous objects and their versions will be deleted.
-func (s *Store) Drop(identifier any) error {
-	return nil
+//
+// If a collection does not exist an ErrNoCollection error is returned.
+//
+// This operation is handled by deleting the collection bucket and any indexes from
+// BoltDB then adding a tombstone record to the collection to replicate the deletion
+// to all replicas and deletes all prior collection metadata versions to free up space.
+//
+// Use this operation to free up space in the database, but note that data deletion,
+// history, and metadata will be lost. If you want to keep the version history of
+// the objects in the collection, use the Collection.Empty method instead which adds
+// a tombstone version to each object in the collection but keeps the version history
+// intact.
+//
+// Edge case: there is a case where a collection is dropped concurrently with a
+// collection modification and the modification wins the last writer wins policy. In
+// this case, the collection should eventually be recreated on a subsequent replication.
+// To avoid this, ensure that the drop operation happens in quorum or on the highest
+// priority replica.
+//
+// TODO: check permissions and ACLs to ensure the user is allowed to drop the collection.
+func (s *Store) Drop(identifier any) (err error) {
+	var (
+		collectionID   ulid.ULID
+		collectionName string
+	)
+
+	// Returns an error if either the ID or name is zero valued, the name is not a
+	// valid collection name, or the ID is a system collection ID.
+	if collectionID, collectionName, err = collectionIdentifier(identifier); err != nil {
+		return err
+	}
+
+	var tx *bbolt.Tx
+	if tx, err = s.db.Begin(true); err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	collections := tx.Bucket(SystemCollections[:])
+
+	// If a name was provided, look up the ID first.
+	if collectionID.IsZero() {
+		nameIndex := collections.Bucket(SystemCollectionNames[:])
+		if v := nameIndex.Get([]byte(collectionName)); v != nil {
+			copy(collectionID[:], v)
+		} else {
+			return errors.ErrNoCollection
+		}
+	}
+
+	// Fetch the collection meta to get its current version.
+	var meta metadata.Collection
+	cursor := collections.Cursor()
+	if key, data := cursor.Seek(collectionID[:]); key == nil || !bytes.HasPrefix(key, collectionID[:]) {
+		return errors.ErrNoCollection
+	} else {
+		if err = lani.Unmarshal(data, &meta); err != nil {
+			return fmt.Errorf("could not unmarshal collection meta: %w", err)
+		}
+	}
+
+	// Remove the name from the name index.
+	nameIndex := collections.Bucket(SystemCollectionNames[:])
+	if err = nameIndex.Delete([]byte(meta.Name)); err != nil {
+		return fmt.Errorf("could not remove collection name from index: %w", err)
+	}
+
+	// Delete all collection versions.
+	for key, _ := cursor.Seek(collectionID[:]); key != nil && bytes.HasPrefix(key, collectionID[:]); key, _ = cursor.Next() {
+		if err = collections.Delete(key); err != nil {
+			return fmt.Errorf("could not delete collection version: %w", err)
+		}
+	}
+
+	// Create the tombstone version for the collection to replicate the deletion.
+	// Modify the current collection inline to prevent an allocation.
+	meta.Tombstone(s.pid, s.region)
+
+	var tdata object.Object
+	if tdata, err = object.MarshalSystem(&meta); err != nil {
+		return fmt.Errorf("could not marshal tombstone collection meta: %w", err)
+	}
+
+	tkey := key.New(meta.ID, &meta.Version.Scalar)
+	if err = collections.Put(tkey, tdata); err != nil {
+		return fmt.Errorf("could not store tombstone collection meta: %w", err)
+	}
+
+	// Delete the collection bucket to remove all of its objects and indexes.
+	// NOTE: DeleteBucket removes the bucket and all nested buckets (including indexes)
+	// and marks the pages as free.
+	if err = tx.DeleteBucket(collectionID[:]); err != nil {
+		return fmt.Errorf("could not delete collection bucket: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 // Truncate a collection, removing all of its contained objects and versions, but
@@ -241,7 +415,7 @@ func (s *Store) Drop(identifier any) error {
 // the truncation operation will start from version 1, even if that truncation happens
 // concurrently with the creation of the new object.
 func (s *Store) Truncate(identifier any) error {
-	return nil
+	return errors.ErrNotImplemented
 }
 
 // Returns the underlying engine that the store is using for persistence. This is
