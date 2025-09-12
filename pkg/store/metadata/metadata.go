@@ -33,8 +33,8 @@ type Metadata struct {
 	key          key.Key          `json:"-" msg:"-"`
 }
 
-var _ lani.Encodable = &Metadata{}
-var _ lani.Decodable = &Metadata{}
+var _ lani.Encodable = (*Metadata)(nil)
+var _ lani.Decodable = (*Metadata)(nil)
 
 func (o *Metadata) Key() key.Key {
 	if o.key == nil {

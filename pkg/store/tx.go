@@ -9,20 +9,31 @@ import (
 )
 
 type Tx struct {
-	tx        *bbolt.Tx
-	writeable bool
+	tx          *bbolt.Tx
+	opts        *TxOptions
+	closed      bool
+	rollbackErr error
+	commitErr   error
+}
+
+type TxOptions struct {
+	ReadOnly    bool
+	ClosedError bool
 }
 
 // Commits the transaction if it is writeable. If the transaction is read-only, then
 // this is a no-op and returns nil (unlike bolt which will return an error). Commit
 // can also be called multiple times safely without an error being returned.
 func (t *Tx) Commit() error {
-	if t.writeable {
-		if err := t.tx.Commit(); !errors.Is(err, berrors.ErrTxClosed) {
-			return err
+	if t.writeable() {
+		t.commitErr = t.tx.Commit()
+		t.closed = true
+
+		if !t.opts.ClosedError && errors.Is(t.commitErr, berrors.ErrTxClosed) {
+			t.commitErr = nil
 		}
 	}
-	return nil
+	return t.commitErr
 }
 
 // Rollback the transaction if it is still open. If the transaction has already been
@@ -30,10 +41,15 @@ func (t *Tx) Commit() error {
 // will return an error). Rollback can also be called multiple times safely without
 // an error being returned.
 func (t *Tx) Rollback() error {
-	if err := t.tx.Rollback(); !errors.Is(err, berrors.ErrTxClosed) {
-		return err
+	if !t.closed {
+		t.rollbackErr = t.tx.Rollback()
+		t.closed = true
+
+		if !t.opts.ClosedError && errors.Is(t.rollbackErr, berrors.ErrTxClosed) {
+			t.rollbackErr = nil
+		}
 	}
-	return nil
+	return t.rollbackErr
 }
 
 // Collection retrieves a bucket by name if a string is supplied by looking the name up
@@ -72,4 +88,9 @@ func (t *Tx) Has(collection ulid.ULID, id ulid.ULID) (exists bool, err error) {
 // collection and the latest version is not a tombstone.
 func (t *Tx) Exists(collection ulid.ULID, id ulid.ULID) (exists bool, err error) {
 	panic("not implemented yet")
+}
+
+// writeable returns true if the transaction is not read-only and has not been closed.
+func (t *Tx) writeable() bool {
+	return !t.opts.ReadOnly && !t.closed
 }

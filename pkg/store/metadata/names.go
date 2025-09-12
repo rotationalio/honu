@@ -1,17 +1,11 @@
 package metadata
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"unicode"
-)
 
-var (
-	ErrInvalidName    = errors.New("identifier names must be alphanumeric or contain underscores and dashes")
-	ErrEmptyName      = errors.New("identifier names cannot be empty")
-	ErrNameChar       = errors.New("identifier names cannot contain spaces or punctuation")
-	ErrNameDigitStart = errors.New("identifier names cannot start with a digit")
+	"go.rtnl.ai/honu/pkg/errors"
 )
 
 // Names in Honu are used to identify collections or to create indexable key/value pairs
@@ -21,16 +15,16 @@ var (
 // underscores and dashes, and must not start with a number.
 func ValidateName(s string) error {
 	if s == "" {
-		return ErrEmptyName
+		return errors.ErrEmptyName
 	}
 
 	for i, c := range s {
 		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_' && c != '-' {
-			return fmt.Errorf("%w: invalid character '%c' at position %d", ErrNameChar, c, i)
+			return fmt.Errorf("%w: invalid character '%c' at position %d", errors.ErrNameChar, c, i)
 		}
 
 		if i == 0 && (unicode.IsDigit(c) || c == '-') {
-			return ErrNameDigitStart
+			return errors.ErrNameDigitStart
 		}
 	}
 
@@ -44,7 +38,7 @@ var identifierRE = regexp.MustCompile(`^[\p{L}_][\p{L}\p{Nd}_-]*$`)
 // validation since the ValidateName method actually has better benchmark performance.
 func ValidateNameRegex(s string) error {
 	if !identifierRE.MatchString(s) {
-		return ErrInvalidName
+		return errors.ErrInvalidName
 	}
 	return nil
 }

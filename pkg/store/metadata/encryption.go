@@ -33,8 +33,8 @@ type Encryption struct {
 	SignatureAlgorithm  EncryptionAlgorithm `json:"signature_algorithm,omitempty" msg:"signature_algorithm,omitempty"`
 }
 
-var _ lani.Encodable = &Encryption{}
-var _ lani.Decodable = &Encryption{}
+var _ lani.Encodable = (*Encryption)(nil)
+var _ lani.Decodable = (*Encryption)(nil)
 
 // The static size of a zero valued Encryption object; see TestEncryptionSize for details.
 const encryptionStaticSize = 43
@@ -144,8 +144,8 @@ func ParseEncryptionAlgorithm(s string) (EncryptionAlgorithm, error) {
 	}
 }
 
-func (o EncryptionAlgorithm) String() string {
-	switch o {
+func (ea EncryptionAlgorithm) String() string {
+	switch ea {
 	case Plaintext:
 		return "PLAINTEXT"
 	case AES256_GCM:
@@ -163,17 +163,21 @@ func (o EncryptionAlgorithm) String() string {
 	}
 }
 
-func (o *EncryptionAlgorithm) MarshalJSON() ([]byte, error) {
-	return json.Marshal(o.String())
+func (ea *EncryptionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ea.String())
 }
 
-func (o *EncryptionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+func (ea *EncryptionAlgorithm) UnmarshalJSON(data []byte) (err error) {
 	var alg string
 	if err := json.Unmarshal(data, &alg); err != nil {
 		return err
 	}
-	if *o, err = ParseEncryptionAlgorithm(alg); err != nil {
+	if *ea, err = ParseEncryptionAlgorithm(alg); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (ea EncryptionAlgorithm) Value() uint8 {
+	return uint8(ea)
 }

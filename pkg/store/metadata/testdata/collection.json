@@ -27,6 +27,12 @@
     "ipaddr": "10.42.10.123",
     "user_agent": "PyHonu v1"
   },
+  "schema": {
+    "name": "test",
+    "major": 1,
+    "minor": 2,
+    "patch": 3
+  },
   "encryption": {
     "sealing_algorithm": "PLAINTEXT",
     "encryption_algorithm": "PLAINTEXT",
@@ -37,6 +43,38 @@
     "level": 1
   },
   "flags": 12,
+  "indexes": [
+    {
+      "id": "01K4XB1B5M2WK7WWC2E6QWXRJB",
+      "name": "slug",
+      "type": "UNIQUE",
+      "field": {
+        "name": "slug",
+        "type": "STRING",
+        "collection": "01JDYY8VJHHXJKVD5RF5WYQ32A"
+      },
+      "ref": {
+        "name": "id",
+        "type": "ULID",
+        "collection": "01JDYY8VJHHXJKVD5RF5WYQ32A"
+      }
+    },
+    {
+      "id": "01K4X59HG43HF3FFV6TP3ACNWP",
+      "name": "test_index",
+      "type": "FOREIGN_KEY",
+      "field": {
+        "name": "author_id",
+        "type": "STRING",
+        "collection": "01JDYY8VJHHXJKVD5RF5WYQ32A"
+      },
+      "ref": {
+        "name": "id",
+        "type": "ULID",
+        "collection": "01K4X595ZVB1CWEA1ZP01FKCR9"
+      }
+    }
+  ],
   "created": "2024-11-28T21:03:51Z",
   "modified": "2024-12-19T03:21:48Z"
 }

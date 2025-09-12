@@ -104,10 +104,14 @@ func (s *honuTestSuite) TestInitialized() {
 		store.SystemAccessControl,
 	}
 
+	tx, err := db.Begin(false)
+	require.NoError(err, "could not begin read-only transaction")
+	defer tx.Rollback()
+
+	// Ensure all of the collection buckets exist.
 	for _, collection := range collections {
-		exists, err := s.store.Has(collection)
-		require.NoError(err, "failed to check if collection exists")
-		require.True(exists, "collection %s should exist", collection)
+		bucket := tx.Bucket(collection[:])
+		require.NotNil(bucket, "collection bucket %s should exist", collection)
 	}
 }
 
@@ -158,6 +162,7 @@ func Example_system_names() {
 		store.SystemCollections,
 		store.SystemReplicas,
 		store.SystemAccessControl,
+		store.SystemCollectionNames,
 	}
 
 	for _, sysid := range systemIDs {
@@ -172,6 +177,7 @@ func Example_system_names() {
 	// honu collection (1984-03-19T12:08:28Z)
 	// honu accesslist (1984-03-19T12:08:28Z)
 	// honu networking (1984-03-19T12:08:28Z)
+	// honu colnameidx (1984-03-19T12:08:28Z)
 }
 
 func TestInitializedEmpty(t *testing.T) {

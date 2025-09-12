@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/errors"
 	. "go.rtnl.ai/honu/pkg/store/metadata"
 )
 
@@ -55,14 +56,14 @@ func TestNameIdentifiers(t *testing.T) {
 			identifier string
 			expected   error
 		}{
-			{"", ErrEmptyName},
-			{"1variable", ErrNameDigitStart},
-			{"೬variable", ErrNameDigitStart},
-			{"variable name", ErrNameChar},
-			{"variable-name!", ErrNameChar},
-			{"-starts-with-dash", ErrNameDigitStart},
-			{"abc※def", ErrNameChar},
-			{"_🤩_", ErrNameChar},
+			{"", errors.ErrEmptyName},
+			{"1variable", errors.ErrNameDigitStart},
+			{"೬variable", errors.ErrNameDigitStart},
+			{"variable name", errors.ErrNameChar},
+			{"variable-name!", errors.ErrNameChar},
+			{"-starts-with-dash", errors.ErrNameDigitStart},
+			{"abc※def", errors.ErrNameChar},
+			{"_🤩_", errors.ErrNameChar},
 		}
 
 		t.Run("Regex", func(t *testing.T) {

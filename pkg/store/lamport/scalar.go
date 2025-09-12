@@ -30,12 +30,12 @@ type Scalar struct {
 var (
 	zero                            = &Scalar{0, 0}
 	scre                            = regexp.MustCompile(`^(\d+)\.(\d+)$`)
-	_    lani.Encodable             = &Scalar{}
-	_    lani.Decodable             = &Scalar{}
-	_    encoding.BinaryMarshaler   = &Scalar{}
-	_    encoding.BinaryUnmarshaler = &Scalar{}
-	_    encoding.TextMarshaler     = &Scalar{}
-	_    encoding.TextUnmarshaler   = &Scalar{}
+	_    lani.Encodable             = (*Scalar)(nil)
+	_    lani.Decodable             = (*Scalar)(nil)
+	_    encoding.BinaryMarshaler   = (*Scalar)(nil)
+	_    encoding.BinaryUnmarshaler = (*Scalar)(nil)
+	_    encoding.TextMarshaler     = (*Scalar)(nil)
+	_    encoding.TextUnmarshaler   = (*Scalar)(nil)
 )
 
 const scalarSize = binary.MaxVarintLen32 + binary.MaxVarintLen64

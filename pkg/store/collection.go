@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"go.etcd.io/bbolt"
+	"go.rtnl.ai/honu/pkg/errors"
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/ulid"
@@ -133,4 +134,38 @@ func (c *Collection) Meta() *metadata.Collection {
 // internally by the store for management purposes and was not created by a user.
 func (c *Collection) IsSystem() bool {
 	return bytes.HasPrefix(c.Key[:], SystemPrefix[:])
+}
+
+//===========================================================================
+// Collection Helper Methods
+//===========================================================================
+
+// Returns either an ULID or a name from the specified identifier, returning an error
+// if the identifier is not valid (e.g. zero valued or not a collection name).
+// NOTE: this method will not return a system collection ID or name.
+func collectionIdentifier(identifier any) (id ulid.ULID, name string, err error) {
+	switch v := identifier.(type) {
+	case string:
+		name = v
+	case ulid.ULID:
+		id = v
+	default:
+		return ulid.Zero, "", errors.ErrCollectionIdentifier
+	}
+
+	if id.IsZero() {
+		if name == "" {
+			return ulid.Zero, "", errors.ErrCollectionIdentifier
+		}
+
+		if err = metadata.ValidateName(name); err != nil {
+			return ulid.Zero, "", err
+		}
+	} else {
+		if bytes.HasPrefix(id[:], SystemPrefix[:]) {
+			return ulid.Zero, "", errors.ErrCollectionIdentifier
+		}
+	}
+
+	return id, name, nil
 }

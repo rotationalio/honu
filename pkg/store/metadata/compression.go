@@ -27,8 +27,8 @@ type Compression struct {
 	Level     int64                `json:"level,omitempty" msg:"level,omitempty"`
 }
 
-var _ lani.Encodable = &Compression{}
-var _ lani.Decodable = &Compression{}
+var _ lani.Encodable = (*Compression)(nil)
+var _ lani.Decodable = (*Compression)(nil)
 
 // The static size of a zero valued Compression object; see TestCompressionSize for details.
 const compressionStaticSize = 11
@@ -84,8 +84,8 @@ func ParseCompressionAlgorithm(s string) (CompressionAlgorithm, error) {
 	}
 }
 
-func (o CompressionAlgorithm) String() string {
-	switch o {
+func (ca CompressionAlgorithm) String() string {
+	switch ca {
 	case None:
 		return "NONE"
 	case GZIP:
@@ -101,17 +101,21 @@ func (o CompressionAlgorithm) String() string {
 	}
 }
 
-func (o *CompressionAlgorithm) MarshalJSON() ([]byte, error) {
-	return json.Marshal(o.String())
+func (ca *CompressionAlgorithm) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ca.String())
 }
 
-func (o *CompressionAlgorithm) UnmarshalJSON(data []byte) (err error) {
+func (ca *CompressionAlgorithm) UnmarshalJSON(data []byte) (err error) {
 	var alg string
 	if err := json.Unmarshal(data, &alg); err != nil {
 		return err
 	}
-	if *o, err = ParseCompressionAlgorithm(alg); err != nil {
+	if *ca, err = ParseCompressionAlgorithm(alg); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (ca CompressionAlgorithm) Value() uint8 {
+	return uint8(ca)
 }
