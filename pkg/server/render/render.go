@@ -9,6 +9,10 @@ import (
 	"go.rtnl.ai/honu/pkg/mime"
 )
 
+type Renderer interface {
+	Render(code int, w http.ResponseWriter, obj any) error
+}
+
 // Header keys for http requests and responses
 const (
 	Accept      = "Accept"

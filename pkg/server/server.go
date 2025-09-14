@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/logger"
+	"go.rtnl.ai/honu/pkg/store"
 )
 
 func init() {
@@ -57,6 +58,11 @@ func New(conf config.Config) (s *Server, err error) {
 		errc: make(chan error, 1),
 	}
 
+	// Initialize the underlying store
+	if s.db, err = store.Open(conf); err != nil {
+		return nil, err
+	}
+
 	// Create the httprouter
 	s.router = httprouter.New()
 	s.router.RedirectFixedPath = true
@@ -90,6 +96,7 @@ func New(conf config.Config) (s *Server, err error) {
 // The server may also implement background services as required.
 type Server struct {
 	sync.RWMutex
+	db      *store.Store
 	conf    config.Config
 	srv     *http.Server
 	router  *httprouter.Router

@@ -140,7 +140,7 @@ func (s *Store) Begin(opts *TxOptions) (tx *Tx, err error) {
 // returned for each collection, so any collection operations must be performed after
 // opening the collection by its ID or name.
 // TODO: check permissions and ACLs to ensure the user is allowed to read collections.
-func (s *Store) Collections() (collections []metadata.Collection, err error) {
+func (s *Store) Collections() (collections []*metadata.Collection, err error) {
 	var tx *bbolt.Tx
 	if tx, err = s.db.Begin(false); err != nil {
 		return nil, err
@@ -158,8 +158,8 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 			return nil
 		}
 
-		var c metadata.Collection
-		if err := lani.Unmarshal(data, &c); err != nil {
+		var c *metadata.Collection
+		if err := lani.Unmarshal(data, c); err != nil {
 			return err
 		}
 		collections = append(collections, c)
