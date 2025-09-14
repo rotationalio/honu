@@ -40,6 +40,10 @@ var (
 
 const scalarSize = binary.MaxVarintLen32 + binary.MaxVarintLen64
 
+var (
+	ErrInvalidFormat = errors.New("could not parse text representation of a scalar")
+)
+
 // Compare returns an integer comparing two scalars using a happens before relationship.
 // The result will be 0 if a == b, -1 if a < b (e.g. a happens before b), and
 // +1 if a > b (e.g. b happens before a). A nil argument is equivalent to a zero scalar.
@@ -148,7 +152,7 @@ func (s *Scalar) MarshalText() (_ []byte, err error) {
 
 func (s *Scalar) UnmarshalText(text []byte) (err error) {
 	if !scre.Match(text) {
-		return errors.New("could not parse text representation of a scalar")
+		return ErrInvalidFormat
 	}
 
 	parts := bytes.Split(text, []byte{'.'})

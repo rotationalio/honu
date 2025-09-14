@@ -30,11 +30,6 @@ var (
 	SystemCollectionNames = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6e, 0x61, 0x6d, 0x65, 0x69, 0x64, 0x78})
 )
 
-// Collection or store related errors.
-var (
-	ErrCreateID = errors.New("create collection: cannot specify ID")
-)
-
 // Store implements local database functionality for interaction with objects and their
 // metadata on disk. All external accessors of the store (with the possible exception
 // of database backups) should use the Store to ensure proper isolation, consistency,
@@ -149,7 +144,7 @@ func (s *Store) Collections() (collections []*metadata.Collection, err error) {
 
 	var bucket *bbolt.Bucket
 	if bucket = tx.Bucket(SystemCollections[:]); bucket == nil {
-		return nil, errors.New("collections: system collections bucket does not exist")
+		return nil, errors.ErrNotInitialized
 	}
 
 	bucket.ForEach(func(key, data []byte) error {
@@ -191,7 +186,7 @@ func (s *Store) New(info *metadata.Collection) (err error) {
 
 	// A collection must not have an ID set.
 	if !info.ID.IsZero() {
-		return ErrCreateID
+		return errors.ErrCreateID
 	}
 
 	// Update the collection info to set the ID and creation time.

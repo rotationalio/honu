@@ -1,10 +1,10 @@
 package iterator_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/errors"
 	. "go.rtnl.ai/honu/pkg/store/iterator"
 )
 
@@ -25,7 +25,7 @@ func TestEmptyIterator(t *testing.T) {
 
 		// However if next is called after release, then the iterator should error
 		require.False(t, iter.Next())
-		require.EqualError(t, iter.Error(), ErrIterReleased.Error())
+		require.EqualError(t, iter.Error(), errors.ErrIterReleased.Error())
 	})
 
 	t.Run("Error", func(t *testing.T) {

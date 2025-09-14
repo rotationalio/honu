@@ -5,7 +5,6 @@ import (
 
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/errors"
-	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/ulid"
 )
@@ -14,12 +13,8 @@ import (
 // object in a collection is prefixed by the collection ID, ensuring that the objects
 // are grouped together and can be accessed efficiently.
 type Collection struct {
-	// The key representing the latest version of the collection.
-	// It is not safe to update this outside of a transaction.
-	Key key.Key
-
-	meta *metadata.Collection `json:"-" msg:"-"`
-	bck  *bbolt.Bucket        `json:"-" msg:"-"`
+	metadata.Collection
+	bkt *bbolt.Bucket `json:"-" msg:"-"`
 }
 
 //===========================================================================
@@ -115,25 +110,6 @@ func (c *Collection) Delete() error {
 // the truncation happens concurrently with the creation of the new object.
 func (c *Collection) Destroy() error {
 	return nil
-}
-
-//===========================================================================
-// Collection Methods
-//===========================================================================
-
-// Meta returns the collection metadata for the collection, caching it for the duration
-// of the transaction. It is deleted when the transaction is closed.
-func (c *Collection) Meta() *metadata.Collection {
-	if c.meta == nil {
-		panic("not implemented yet")
-	}
-	return c.meta
-}
-
-// Returns true if the collection is a system collection, which means it is used
-// internally by the store for management purposes and was not created by a user.
-func (c *Collection) IsSystem() bool {
-	return bytes.HasPrefix(c.Key[:], SystemPrefix[:])
 }
 
 //===========================================================================
