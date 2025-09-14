@@ -15,8 +15,10 @@ type Renderer interface {
 
 // Header keys for http requests and responses
 const (
-	Accept      = "Accept"
-	ContentType = "Content-Type"
+	Accept              = "Accept"
+	ContentType         = "Content-Type"
+	ContentLength       = "Content-Length"
+	XContentTypeOptions = "X-Content-Type-Options"
 )
 
 // Content type values

@@ -138,7 +138,7 @@ func (s *APIv1) WaitForReady(ctx context.Context) (err error) {
 		defer rep.Body.Close()
 
 		if rep.StatusCode < 200 || rep.StatusCode >= 300 {
-			return false, &StatusError{StatusCode: rep.StatusCode, Reply: Reply{Success: false, Error: http.StatusText(rep.StatusCode)}}
+			return false, &StatusError{Code: rep.StatusCode, Reply: Reply{Success: false, Error: http.StatusText(rep.StatusCode)}}
 		}
 		return true, nil
 	}
@@ -303,7 +303,7 @@ func (s *APIv1) Do(req *http.Request, data interface{}, checkStatus bool) (rep *
 		if rep.StatusCode < 200 || rep.StatusCode >= 300 {
 			// Attempt to read the error response from JSON, if available
 			serr := &StatusError{
-				StatusCode: rep.StatusCode,
+				Code: rep.StatusCode,
 			}
 
 			if err = json.NewDecoder(rep.Body).Decode(&serr.Reply); err == nil {

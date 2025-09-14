@@ -2,14 +2,13 @@ package mime
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/tinylib/msgp/msgp"
-	"go.rtnl.ai/honu/pkg/api/v1"
+	"go.rtnl.ai/honu/pkg/errors"
 )
 
 const (
@@ -28,10 +27,7 @@ func Bind(w http.ResponseWriter, r *http.Request, dst any) (err error) {
 	var mime MIME
 	contentType := r.Header.Get(ContentType)
 	if mime, err = Parse(contentType); err != nil {
-		return &api.StatusError{
-			StatusCode: http.StatusUnsupportedMediaType,
-			Reply:      api.Error(err),
-		}
+		return errors.Status(http.StatusUnsupportedMediaType, err)
 	}
 
 	// Create a maximum bytes reader to prevent abuse.
@@ -44,10 +40,7 @@ func Bind(w http.ResponseWriter, r *http.Request, dst any) (err error) {
 	case MSGPACK:
 		return bindMsgPack(r.Body, dst)
 	default:
-		return &api.StatusError{
-			StatusCode: http.StatusUnsupportedMediaType,
-			Reply:      api.Error("unsupported content type for request body"),
-		}
+		return errors.Status(http.StatusUnsupportedMediaType, "unsupported content type for request body")
 	}
 }
 
@@ -70,17 +63,11 @@ func bind(contentType MIME, binder binder, w http.ResponseWriter, r *http.Reques
 	// Determine the content type of the request sent by the client.
 	var mime MIME
 	if mime, err = Parse(r.Header.Get(ContentType)); err != nil {
-		return &api.StatusError{
-			StatusCode: http.StatusUnsupportedMediaType,
-			Reply:      api.Error(err),
-		}
+		return errors.Status(http.StatusUnsupportedMediaType, err)
 	}
 
 	if mime != contentType {
-		return &api.StatusError{
-			StatusCode: http.StatusUnsupportedMediaType,
-			Reply:      api.Error(fmt.Errorf("content type %s required for this endpoint", contentType)),
-		}
+		return errors.Statusf(http.StatusUnsupportedMediaType, "content type %s required for this endpoint", contentType)
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, MaxPayloadSize)
@@ -106,26 +93,23 @@ func bindJSON(body io.Reader, dst any) error {
 
 		switch {
 		case errors.As(err, &syntaxError):
-			msg := fmt.Sprintf("request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error(msg)}
+			return errors.Statusf(http.StatusBadRequest, "request body contains badly-formed JSON (at position %d)", syntaxError.Offset)
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error("request body contains badly-formed JSON")}
+			return errors.Status(http.StatusBadRequest, "request body contains badly-formed JSON")
 
 		case errors.As(err, &typeError):
-			msg := fmt.Sprintf("request body contains an invalid value for field %q at position %d", typeError.Field, typeError.Offset)
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error(msg)}
+			return errors.Statusf(http.StatusBadRequest, "request body contains an invalid value for field %q at position %d", typeError.Field, typeError.Offset)
 
 		case strings.HasPrefix(err.Error(), "json: unknown field "):
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			msg := fmt.Sprintf("request body contains unknown field %s", fieldName)
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error(msg)}
+			return errors.Statusf(http.StatusBadRequest, "request body contains unknown field %s", fieldName)
 
 		case errors.Is(err, io.EOF):
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error("no data in request body")}
+			return errors.Status(http.StatusBadRequest, "no data in request body")
 
 		case errors.As(err, &maxBytes):
-			return &api.StatusError{StatusCode: http.StatusRequestEntityTooLarge, Reply: api.Error("maximum size limit exceeded")}
+			return errors.Status(http.StatusRequestEntityTooLarge, "maximum size limit exceeded")
 
 		default:
 			return err
@@ -134,7 +118,7 @@ func bindJSON(body io.Reader, dst any) error {
 
 	// Ensure the request body only contains a single JSON object
 	if err := decoder.Decode(&struct{}{}); err != nil && !errors.Is(err, io.EOF) {
-		return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error("request body must contain a single JSON object")}
+		return errors.Status(http.StatusBadRequest, "request body must contain a single JSON object")
 	}
 	return nil
 }
@@ -152,16 +136,13 @@ func bindMsgPack(body io.Reader, dst any) error {
 
 		switch {
 		case errors.Is(err, io.EOF):
-			return &api.StatusError{StatusCode: http.StatusBadRequest, Reply: api.Error("no data in request body")}
+			return errors.Status(http.StatusBadRequest, "no data in request body")
 
 		case errors.As(err, &maxBytes):
-			return &api.StatusError{StatusCode: http.StatusRequestEntityTooLarge, Reply: api.Error("maximum size limit exceeded")}
+			return errors.Status(http.StatusRequestEntityTooLarge, "maximum size limit exceeded")
 
 		default:
-			return &api.StatusError{
-				StatusCode: http.StatusBadRequest,
-				Reply:      api.Error(err),
-			}
+			return errors.Status(http.StatusBadRequest, err)
 		}
 	}
 

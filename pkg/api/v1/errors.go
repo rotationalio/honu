@@ -64,12 +64,12 @@ func Error(err interface{}) Reply {
 
 // StatusError decodes an error response from the HTTP response.
 type StatusError struct {
-	StatusCode int
-	Reply      Reply
+	Code  int
+	Reply Reply
 }
 
 func (e *StatusError) Error() string {
-	return fmt.Sprintf("[%d] %s", e.StatusCode, e.Reply.Error)
+	return fmt.Sprintf("[%d] %s", e.Code, e.Reply.Error)
 }
 
 // ErrorStatus returns the HTTP status code from an error or 500 if the error is not a StatusError.
@@ -78,10 +78,10 @@ func ErrorStatus(err error) int {
 		return http.StatusOK
 	}
 
-	if e, ok := err.(*StatusError); !ok || e.StatusCode < 100 || e.StatusCode >= 600 {
+	if e, ok := err.(*StatusError); !ok || e.Code < 100 || e.Code >= 600 {
 		return http.StatusInternalServerError
 	} else {
-		return e.StatusCode
+		return e.Code
 	}
 }
 
