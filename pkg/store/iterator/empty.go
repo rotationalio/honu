@@ -1,6 +1,7 @@
 package iterator
 
 import (
+	"go.rtnl.ai/honu/pkg/errors"
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/object"
 )
@@ -20,7 +21,7 @@ var _ Iterator = &emptyIterator{}
 
 func (i *emptyIterator) rErr() {
 	if i.err == nil && i.released {
-		i.err = ErrIterReleased
+		i.err = errors.ErrIterReleased
 	}
 }
 

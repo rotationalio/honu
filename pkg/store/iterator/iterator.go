@@ -1,15 +1,8 @@
 package iterator
 
 import (
-	"errors"
-
 	"go.rtnl.ai/honu/pkg/store/key"
 	"go.rtnl.ai/honu/pkg/store/object"
-)
-
-// Standard iterator errors that may be returned for error type checking.
-var (
-	ErrIterReleased = errors.New("iterator has been released")
 )
 
 // Iterator retrieves multiple results from the underlying database, allowing users to

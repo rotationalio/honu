@@ -30,11 +30,6 @@ var (
 	SystemCollectionNames = ulid.ULID([16]byte{0x00, 0x68, 0x6f, 0x6e, 0x75, 0x00, 0x63, 0x6f, 0x6c, 0x6e, 0x61, 0x6d, 0x65, 0x69, 0x64, 0x78})
 )
 
-// Collection or store related errors.
-var (
-	ErrCreateID = errors.New("create collection: cannot specify ID")
-)
-
 // Store implements local database functionality for interaction with objects and their
 // metadata on disk. All external accessors of the store (with the possible exception
 // of database backups) should use the Store to ensure proper isolation, consistency,
@@ -140,7 +135,7 @@ func (s *Store) Begin(opts *TxOptions) (tx *Tx, err error) {
 // returned for each collection, so any collection operations must be performed after
 // opening the collection by its ID or name.
 // TODO: check permissions and ACLs to ensure the user is allowed to read collections.
-func (s *Store) Collections() (collections []metadata.Collection, err error) {
+func (s *Store) Collections() (collections []*metadata.Collection, err error) {
 	var tx *bbolt.Tx
 	if tx, err = s.db.Begin(false); err != nil {
 		return nil, err
@@ -149,7 +144,7 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 
 	var bucket *bbolt.Bucket
 	if bucket = tx.Bucket(SystemCollections[:]); bucket == nil {
-		return nil, errors.New("collections: system collections bucket does not exist")
+		return nil, errors.ErrNotInitialized
 	}
 
 	bucket.ForEach(func(key, data []byte) error {
@@ -158,8 +153,8 @@ func (s *Store) Collections() (collections []metadata.Collection, err error) {
 			return nil
 		}
 
-		var c metadata.Collection
-		if err := lani.Unmarshal(data, &c); err != nil {
+		var c *metadata.Collection
+		if err := lani.Unmarshal(data, c); err != nil {
 			return err
 		}
 		collections = append(collections, c)
@@ -191,7 +186,7 @@ func (s *Store) New(info *metadata.Collection) (err error) {
 
 	// A collection must not have an ID set.
 	if !info.ID.IsZero() {
-		return ErrCreateID
+		return errors.ErrCreateID
 	}
 
 	// Update the collection info to set the ID and creation time.
@@ -296,6 +291,14 @@ func (s *Store) Has(identifier any) (exists bool, err error) {
 	exists = key != nil && bytes.HasPrefix(key, collectionID[:])
 
 	return exists, err
+}
+
+// Collection returns the latest metadata version fo the specified collection using its
+// identifier (e.g. either the collection ID or name). If the collection does not exist,
+// an ErrNoCollection error is returned.
+// TODO: check permissions and ACLs to ensure the user is allowed to read the collection.
+func (s *Store) Collection(identifier any) (info *metadata.Collection, err error) {
+	return info, nil
 }
 
 // Modifies the metadata of an existing collection; the collection should either have
