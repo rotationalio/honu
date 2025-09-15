@@ -293,6 +293,14 @@ func (s *Store) Has(identifier any) (exists bool, err error) {
 	return exists, err
 }
 
+// Collection returns the latest metadata version fo the specified collection using its
+// identifier (e.g. either the collection ID or name). If the collection does not exist,
+// an ErrNoCollection error is returned.
+// TODO: check permissions and ACLs to ensure the user is allowed to read the collection.
+func (s *Store) Collection(identifier any) (info *metadata.Collection, err error) {
+	return info, nil
+}
+
 // Modifies the metadata of an existing collection; the collection should either have
 // an ID or a name for reference and must already exist in the store.
 func (s *Store) Modify(info *metadata.Collection) error {
