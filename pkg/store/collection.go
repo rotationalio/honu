@@ -5,6 +5,7 @@ import (
 
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/errors"
+	"go.rtnl.ai/honu/pkg/store/iterator"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/ulid"
 )
@@ -24,15 +25,16 @@ type Collection struct {
 // List all of the objects in the collection, returning an iterator that will allow the
 // caller to either simply iterate over the keys or to actually retreive the objects in
 // a memory-efficient manner.
-func (c *Collection) List() error {
-	return nil
+func (c *Collection) List() iterator.Iterator {
+	// Iterator.New expects an uninitialized cursor, so we don't call First() here.
+	return iterator.New(c.bkt.Cursor())
 }
 
 // List all of the objects in the collection that match the specified query. An iterator
 // is returned that will allow the caller to either simply iterate over the keys
 // or to actually retrieve the objects in a memory-efficient manner.
-func (c *Collection) Query() error {
-	return nil
+func (c *Collection) Query() iterator.Iterator {
+	return iterator.Empty(errors.ErrNotImplemented)
 }
 
 // Has returns true if the object with the specified ID has any version (including
@@ -45,7 +47,7 @@ func (c *Collection) Has(id ulid.ULID) (exists bool, err error) {
 // Exists returns true if the object with the specified ID exists in the collection
 // and the latest version is not a tombstone.
 func (c *Collection) Exists(id ulid.ULID) (exists bool, err error) {
-	panic("not implemented yet")
+	return false, errors.ErrNotImplemented
 }
 
 // Empty the collection by adding a tombstone version to all of the objects in the
@@ -53,7 +55,7 @@ func (c *Collection) Exists(id ulid.ULID) (exists bool, err error) {
 // history is preserved. This is different from the Collection.Truncate method which
 // removes all objects and their versions from the collection.
 func (c *Collection) Empty() error {
-	return nil
+	return errors.ErrNotImplemented
 }
 
 // Create a new object in the collection with the given key and value. The key must be

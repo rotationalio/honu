@@ -22,7 +22,7 @@ type Iterator interface {
 	// the object has been loaded from disk.
 	Object() object.Object
 
-	// Error returns any accumulated error. Exhausting all rows or key/value pairs is
+	// Error returns any accumulated errors. Exhausting all rows or key/value pairs is
 	// not considered to be an error.
 	Error() error
 }
