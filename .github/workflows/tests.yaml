@@ -33,7 +33,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go-version: [1.24.x, 1.25.x]
+        # NOTE: tests require v1.25 features
+        go-version: [1.25.x]
     env:
       GOPATH: ${{ github.workspace }}/go
       GOBIN: ${{ github.workspace }}/go/bin
