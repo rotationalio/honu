@@ -2,7 +2,7 @@ package iterator
 
 import (
 	"go.etcd.io/bbolt"
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/object"
 )
 
@@ -19,9 +19,9 @@ type Cursor struct {
 	err     error
 }
 
-func (c *Cursor) Key() key.Key {
+func (c *Cursor) Key() keys.Key {
 	if len(c.key) != 0 {
-		k := make(key.Key, len(c.key))
+		k := make(keys.Key, len(c.key))
 		copy(k, c.key)
 		return k
 	}

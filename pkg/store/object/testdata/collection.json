@@ -3,7 +3,7 @@
   "name": "Test Collection",
   "version": {
     "scalar": "9.3",
-    "region": "us-west1",
+    "region": "gcp-us-west-1b",
     "parent": "9.2",
     "created": "2024-11-28T21:03:51Z"
   },
@@ -20,7 +20,7 @@
       "permissions": 76
     }
   ],
-  "write_regions": ["us-west1", "us-east1"],
+  "write_regions": ["gcp-us-west-1b", "gcp-us-east-1c"],
   "publisher": {
     "publisher_id": "01JDZ187FNTJANGYVSBKEAQ0RT",
     "client_id": "01JDZ18DE4RH4N3TWY7QRPTCYX",

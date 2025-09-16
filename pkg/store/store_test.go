@@ -15,7 +15,7 @@ import (
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/logger"
 	"go.rtnl.ai/honu/pkg/store"
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/ulid"
 )
@@ -220,7 +220,7 @@ func TestInitializedEmpty(t *testing.T) {
 
 	// Ensure the collections do not exist.
 	for _, collection := range collections {
-		cKey := key.New(collection, &version)
+		cKey := keys.New(collection, &version)
 		exists, err := hasKey(bdb, cKey)
 		require.NoError(t, err, "failed to check if collection exists")
 		require.False(t, exists, "collection %s should exist", collection)
@@ -234,7 +234,7 @@ func TestInitializedEmpty(t *testing.T) {
 
 	// Ensure the collections now exist.
 	for _, collection := range collections {
-		cKey := key.New(collection, &version)
+		cKey := keys.New(collection, &version)
 		exists, err := hasKey(db.DB(), cKey)
 		require.NoError(t, err, "failed to check if collection exists")
 		require.True(t, exists, "collection %s should exist", collection)

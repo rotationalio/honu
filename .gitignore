@@ -17,6 +17,7 @@
 # Local environment variables and secrets
 .env
 .secret
+tmp/
 
 # Docs
 docs/public/

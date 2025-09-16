@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
@@ -20,7 +21,7 @@ type Collection struct {
 	Group        ulid.ULID        `json:"group" msg:"group"`
 	Permissions  uint8            `json:"permissions,omitempty" msg:"permissions,omitempty"`
 	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
-	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
+	WriteRegions region.Regions   `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
 	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
 	Schema       *SchemaVersion   `json:"schema,omitempty" msg:"schema,omitempty"`
 	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
@@ -52,7 +53,7 @@ func (c *Collection) Validate() (err error) {
 // Modifies the current collection in place to be a tombstone version, removing all
 // non-essential fields and updating the version as a tombstone version.
 // NOTE: ID, name, owner, group, created, and modified are preserved.
-func (c *Collection) Tombstone(pid lamport.PID, region string) {
+func (c *Collection) Tombstone(pid lamport.PID, region region.Region) {
 	tombstone := &Version{
 		Scalar:    pid.Next(&c.Version.Scalar),
 		Region:    region,
@@ -99,9 +100,7 @@ func (c *Collection) Size() (s int) {
 
 	// Write Regions List
 	s += len(c.WriteRegions) * binary.MaxVarintLen64
-	for _, wr := range c.WriteRegions {
-		s += len([]byte(wr))
-	}
+	s += len(c.WriteRegions) * binary.MaxVarintLen32
 
 	// Publisher size
 	if c.Publisher != nil {
@@ -181,7 +180,7 @@ func (c *Collection) Encode(e *lani.Encoder) (n int, err error) {
 		n += m
 	}
 
-	if m, err = e.EncodeStringSlice(c.WriteRegions); err != nil {
+	if m, err = c.WriteRegions.Encode(e); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -293,7 +292,7 @@ func (c *Collection) Decode(d *lani.Decoder) (err error) {
 		}
 	}
 
-	if c.WriteRegions, err = d.DecodeStringSlice(); err != nil {
+	if err = c.WriteRegions.Decode(d); err != nil {
 		return err
 	}
 

@@ -3,7 +3,7 @@
   "collection": "01JDYY8VJHHXJKVD5RF5WYQ32A",
   "version": {
     "scalar": "8.12",
-    "region": "us-central1",
+    "region": "gcp-us-central-1a",
     "parent": "3.11",
     "created": "2024-11-30T10:29:59Z"
   },
@@ -27,7 +27,7 @@
       "permissions": 76
     }
   ],
-  "write_regions": ["us-central1"],
+  "write_regions": ["gcp-us-central-1a"],
   "publisher": {
     "publisher_id": "01JDZ187FNTJANGYVSBKEAQ0RT",
     "client_id": "01JDZ18DE4RH4N3TWY7QRPTCYX",

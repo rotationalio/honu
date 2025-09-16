@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/store/iterator"
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
@@ -18,7 +18,7 @@ import (
 
 var (
 	testBucket = []byte("test-bucket")
-	expected   []key.Key
+	expected   []keys.Key
 )
 
 func TestCursor(t *testing.T) {
@@ -107,14 +107,14 @@ func TestCursor(t *testing.T) {
 		require.Equal(t, expected[40], iter.Key(), "unexpected key from iterator after Prev()")
 
 		// Seek to a non-existent key (between 64 and 65).
-		nonExistent := make(key.Key, len(expected[0]))
+		nonExistent := make(keys.Key, len(expected[0]))
 		copy(nonExistent, expected[63])
 		nonExistent[len(nonExistent)-1]++
 		require.True(t, iter.Seek(nonExistent), "expected Seek() to find next key after non-existent key")
 		require.Equal(t, expected[64], iter.Key(), "unexpected key from iterator after Seek() to non-existent key")
 
 		// Seek to a key beyond the end of the collection.
-		beyondEnd := make(key.Key, len(expected[0]))
+		beyondEnd := make(keys.Key, len(expected[0]))
 		copy(beyondEnd, expected[len(expected)-1])
 		beyondEnd[len(beyondEnd)-1]++
 		require.False(t, iter.Seek(beyondEnd), "expected Seek() to return false for key beyond end of collection")
@@ -201,7 +201,7 @@ func populateBucket(tx *bbolt.Tx) error {
 		return err
 	}
 
-	expected = make([]key.Key, 128)
+	expected = make([]keys.Key, 128)
 	vers := &lamport.Scalar{VID: 1, PID: 8}
 	entropy := ulid.Monotonic(rand.Reader, 0)
 
