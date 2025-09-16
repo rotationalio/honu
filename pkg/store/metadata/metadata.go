@@ -85,7 +85,6 @@ func (o *Metadata) Size() (s int) {
 	}
 
 	// Write Regions List
-	s += binary.MaxVarintLen64
 	s += len(o.WriteRegions) * binary.MaxVarintLen32
 
 	// Publisher size

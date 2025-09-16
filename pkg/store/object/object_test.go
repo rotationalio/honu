@@ -26,7 +26,7 @@ func TestObject(t *testing.T) {
 	obj, err := object.Marshal(meta, data)
 	require.NoError(t, err, "could not marshal object")
 
-	require.Len(t, obj, 1280, "unexpected length of encoded object")
+	require.Len(t, obj, 1264, "unexpected length of encoded object")
 	require.Equal(t, object.StorageVersion, obj.StorageVersion())
 
 	ometa, err := obj.Metadata()

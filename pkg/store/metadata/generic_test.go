@@ -31,17 +31,20 @@ type TestCase struct {
 }
 
 func (tc *TestCase) TestStaticSize(t *testing.T) {
+	t.Helper()
 	obj := tc.New()
 	require.Equal(t, tc.StaticSize, obj.Size(), "expected zero valued %s to have a static size of %d bytes", tc.Name, tc.StaticSize)
 }
 
 func (tc *TestCase) TestVariableSize(t *testing.T) {
+	t.Helper()
 	obj := tc.New()
 	loadFixture(t, tc.Fixture, obj)
 	require.Equal(t, tc.FixtureSize, obj.Size(), "expected %s to have a size of %d bytes as computed from fixture", tc.Name, tc.FixtureSize)
 }
 
 func (tc *TestCase) TestSerialization(t *testing.T) {
+	t.Helper()
 	obj := tc.New()
 	loadFixture(t, tc.Fixture, obj)
 
@@ -94,12 +97,14 @@ type TestEnumCase struct {
 }
 
 func (tc *TestEnumCase) TestString(t *testing.T) {
+	t.Helper()
 	for i, val := range tc.Values {
 		require.Equal(t, tc.Strings[i], val.String(), "expected %s to have string representation %q", tc.Name, tc.Strings[i])
 	}
 }
 
 func (tc *TestEnumCase) TestStringBounds(t *testing.T) {
+	t.Helper()
 	max := uint8(0)
 	min := uint8(255)
 
@@ -124,6 +129,7 @@ func (tc *TestEnumCase) TestStringBounds(t *testing.T) {
 }
 
 func (tc *TestEnumCase) TestParse(t *testing.T) {
+	t.Helper()
 	t.Run("Valid", func(t *testing.T) {
 		type testCase struct {
 			input    string
@@ -163,6 +169,7 @@ func (tc *TestEnumCase) TestParse(t *testing.T) {
 }
 
 func (tc *TestEnumCase) TestJSON(t *testing.T) {
+	t.Helper()
 	// Test marshaling
 	for _, val := range tc.Values {
 		orig := tc.New(val.Value())

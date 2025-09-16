@@ -59,6 +59,11 @@ func Parse(r any) (Region, error) {
 		return UNKNOWN, fmt.Errorf("unknown region name: %q", v)
 	case uint32:
 		return Region(v), nil
+	case float64:
+		if v < 0 || v > float64(^uint32(0)) || v != float64(uint32(v)) {
+			return UNKNOWN, fmt.Errorf("cannot parse %v to Region", v)
+		}
+		return Region(uint32(v)), nil
 	case Region:
 		return v, nil
 	default:
