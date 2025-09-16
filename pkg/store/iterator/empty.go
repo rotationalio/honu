@@ -2,7 +2,7 @@ package iterator
 
 import (
 	"go.rtnl.ai/honu/pkg/errors"
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/object"
 )
 
@@ -30,7 +30,7 @@ func (i *emptyIterator) Prev() bool           { i.rErr(); return false }
 func (i *emptyIterator) First() bool          { i.rErr(); return false }
 func (i *emptyIterator) Last() bool           { i.rErr(); return false }
 func (i *emptyIterator) Seek(key []byte) bool { i.rErr(); return false }
-func (*emptyIterator) Key() key.Key           { return nil }
+func (*emptyIterator) Key() keys.Key          { return nil }
 func (*emptyIterator) Object() object.Object  { return nil }
 func (i *emptyIterator) Error() error         { return i.err }
 func (i *emptyIterator) Release()             { i.released = true }

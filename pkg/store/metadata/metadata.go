@@ -4,7 +4,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/region"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
@@ -23,22 +24,34 @@ type Metadata struct {
 	Group        ulid.ULID        `json:"group" msg:"group"`
 	Permissions  uint8            `json:"permissions" msg:"permissions"`
 	ACL          []*AccessControl `json:"acl,omitempty" msg:"acl,omitempty"`
-	WriteRegions []string         `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
+	WriteRegions region.Regions   `json:"write_regions,omitempty" msg:"write_regions,omitempty"`
 	Publisher    *Publisher       `json:"publisher,omitempty" msg:"publisher,omitempty"`
 	Encryption   *Encryption      `json:"encryption,omitempty" msg:"encryption,omitempty"`
 	Compression  *Compression     `json:"compression,omitempty" msg:"compression,omitempty"`
 	Flags        uint8            `json:"flags" msg:"flags"`
 	Created      time.Time        `json:"created" msg:"created"`
 	Modified     time.Time        `json:"modified" msg:"modified"`
-	key          key.Key          `json:"-" msg:"-"`
+	key          keys.Key         `json:"-" msg:"-"`
 }
+
+//===========================================================================
+// Metadata Helper Methods
+//===========================================================================
+
+func (m *Metadata) IsTombstone() bool {
+	return m.Version != nil && m.Version.Tombstone
+}
+
+//===========================================================================
+// Metadata Serialization
+//===========================================================================
 
 var _ lani.Encodable = (*Metadata)(nil)
 var _ lani.Decodable = (*Metadata)(nil)
 
-func (o *Metadata) Key() key.Key {
+func (o *Metadata) Key() keys.Key {
 	if o.key == nil {
-		o.key = key.New(o.ObjectID, &o.Version.Scalar)
+		o.key = keys.New(o.ObjectID, &o.Version.Scalar)
 	}
 	return o.key
 }
@@ -72,10 +85,7 @@ func (o *Metadata) Size() (s int) {
 	}
 
 	// Write Regions List
-	s += (len(o.WriteRegions)) * binary.MaxVarintLen64
-	for _, wr := range o.WriteRegions {
-		s += len([]byte(wr))
-	}
+	s += len(o.WriteRegions) * binary.MaxVarintLen32
 
 	// Publisher size
 	if o.Publisher != nil {
@@ -151,7 +161,7 @@ func (o *Metadata) Encode(e *lani.Encoder) (n int, err error) {
 		n += m
 	}
 
-	if m, err = e.EncodeStringSlice(o.WriteRegions); err != nil {
+	if m, err = o.WriteRegions.Encode(e); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -254,7 +264,7 @@ func (o *Metadata) Decode(d *lani.Decoder) (err error) {
 		}
 	}
 
-	if o.WriteRegions, err = d.DecodeStringSlice(); err != nil {
+	if err = o.WriteRegions.Decode(d); err != nil {
 		return err
 	}
 

@@ -1,6 +1,6 @@
 module go.rtnl.ai/honu
 
-go 1.24.5
+go 1.25.1
 
 require (
 	github.com/joho/godotenv v1.5.1

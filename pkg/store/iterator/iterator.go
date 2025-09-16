@@ -1,7 +1,7 @@
 package iterator
 
 import (
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/object"
 )
 
@@ -14,7 +14,7 @@ type Iterator interface {
 	// Key returns the key of the current key/value pair, the object key of a row, or
 	// nil if done. The caller should not modify the contents of the returned slice, and
 	// its contents may change as the iterator progresses across the database.
-	Key() key.Key
+	Key() keys.Key
 
 	// Object returns the replicated object metadata and version information without
 	// data. This method can be used to read meta-information and is also used for
@@ -22,7 +22,7 @@ type Iterator interface {
 	// the object has been loaded from disk.
 	Object() object.Object
 
-	// Error returns any accumulated error. Exhausting all rows or key/value pairs is
+	// Error returns any accumulated errors. Exhausting all rows or key/value pairs is
 	// not considered to be an error.
 	Error() error
 }

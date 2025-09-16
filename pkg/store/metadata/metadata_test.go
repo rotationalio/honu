@@ -25,7 +25,7 @@ func TestMetadata(t *testing.T) {
 		Name:        "Metadata",
 		Fixture:     "metadata.json",
 		StaticSize:  staticSize,
-		FixtureSize: 573,
+		FixtureSize: 557,
 		New:         func() TestObject { return &Metadata{} },
 	}
 

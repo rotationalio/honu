@@ -3,6 +3,7 @@ package metadata
 import (
 	"time"
 
+	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/lani"
 )
@@ -13,7 +14,7 @@ import (
 
 type Version struct {
 	Scalar    lamport.Scalar  `json:"scalar" msg:"scalar"`
-	Region    string          `json:"region" msg:"region"`
+	Region    region.Region   `json:"region" msg:"region"`
 	Parent    *lamport.Scalar `json:"parent,omitempty" msg:"parent,omitempty"`
 	Tombstone bool            `json:"tombstone,omitempty" msg:"tombstone,omitempty"`
 	Created   time.Time       `json:"created" msg:"created"`
@@ -45,7 +46,7 @@ func (o *Version) Encode(e *lani.Encoder) (n int, err error) {
 	}
 	n += m
 
-	if m, err = e.EncodeString(o.Region); err != nil {
+	if m, err = e.EncodeUint32(uint32(o.Region)); err != nil {
 		return n + m, err
 	}
 	n += m
@@ -73,9 +74,11 @@ func (o *Version) Decode(d *lani.Decoder) (err error) {
 		return err
 	}
 
-	if o.Region, err = d.DecodeString(); err != nil {
+	var regionID uint32
+	if regionID, err = d.DecodeUint32(); err != nil {
 		return err
 	}
+	o.Region = region.Region(regionID)
 
 	var isNil bool
 	o.Parent = &lamport.Scalar{}

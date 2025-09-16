@@ -8,7 +8,8 @@ import (
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/errors"
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/region"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lamport"
 	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/honu/pkg/store/metadata"
@@ -43,10 +44,8 @@ var (
 // serialized through the store. Additionally the Store maintains all of the indexes
 // associated with the database, and maintains all constraints such as uniqueness.
 type Store struct {
-	conf   config.StoreConfig
-	region string
-	pid    lamport.PID
-	db     *bbolt.DB
+	conf config.StoreConfig
+	db   *bbolt.DB
 }
 
 // Open a new Store with the provided configuration. Only one Store can be opened for a
@@ -58,7 +57,6 @@ type Store struct {
 func Open(conf config.Config) (s *Store, err error) {
 	s = &Store{
 		conf: conf.Store,
-		pid:  lamport.PID(conf.PID),
 	}
 
 	// TODO: better open with options.
@@ -192,8 +190,8 @@ func (s *Store) New(info *metadata.Collection) (err error) {
 	// Update the collection info to set the ID and creation time.
 	info.ID = ulid.MakeSecure()
 	info.Version = &metadata.Version{
-		Scalar:    s.pid.Next(nil),
-		Region:    s.region,
+		Scalar:    lamport.Next(nil),
+		Region:    region.ProcessRegion(),
 		Parent:    nil,
 		Tombstone: false,
 		Created:   time.Now(),
@@ -230,7 +228,7 @@ func (s *Store) New(info *metadata.Collection) (err error) {
 	}
 
 	// Store the collection metadata in the collections bucket.
-	key := key.New(info.ID, &info.Version.Scalar)
+	key := keys.New(info.ID, &info.Version.Scalar)
 	if err = collections.Put(key, data); err != nil {
 		return fmt.Errorf("could not store collection metadata %s: %w", info.Name, err)
 	}
@@ -386,14 +384,14 @@ func (s *Store) Drop(identifier any) (err error) {
 
 	// Create the tombstone version for the collection to replicate the deletion.
 	// Modify the current collection inline to prevent an allocation.
-	meta.Tombstone(s.pid, s.region)
+	meta.Tombstone(lamport.ProcessID(), region.ProcessRegion())
 
 	var tdata object.Object
 	if tdata, err = object.MarshalSystem(&meta); err != nil {
 		return fmt.Errorf("could not marshal tombstone collection meta: %w", err)
 	}
 
-	tkey := key.New(meta.ID, &meta.Version.Scalar)
+	tkey := keys.New(meta.ID, &meta.Version.Scalar)
 	if err = collections.Put(tkey, tdata); err != nil {
 		return fmt.Errorf("could not store tombstone collection meta: %w", err)
 	}
@@ -515,7 +513,7 @@ func (s *Store) initialize() (err error) {
 	for _, collection := range defaultCollections {
 		// System collections are not updated except between versions of honu, so they
 		// can be fetched directly with the hardcoded ID.
-		collectionKey := key.New(collection.ID, &collection.Version.Scalar)
+		collectionKey := keys.New(collection.ID, &collection.Version.Scalar)
 
 		var exists bool
 		if collectionMeta := collectionsBucket.Get(collectionKey); collectionMeta != nil {
@@ -573,7 +571,7 @@ func (s *Store) check() (err error) {
 	for _, collection := range defaultCollections {
 		// System collections are not updated except between versions of honu, so they
 		// can be fetched directly with the hardcoded ID.
-		collectionKey := key.New(collection.ID, &collection.Version.Scalar)
+		collectionKey := keys.New(collection.ID, &collection.Version.Scalar)
 
 		if meta := collectionsBucket.Get(collectionKey); meta == nil {
 			err = errors.Join(err, fmt.Errorf("missing metadata for collection %s (%s)", collection.Name, collection.ID))

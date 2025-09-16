@@ -3,7 +3,7 @@ package object
 import (
 	"encoding/binary"
 
-	"go.rtnl.ai/honu/pkg/store/key"
+	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/honu/pkg/store/metadata"
 )
@@ -54,7 +54,7 @@ func (o Object) StorageVersion() uint8 {
 // Shortcut for parsing the metadata then getting the key from it. However, it is not
 // recommended to do this if you need access to the metadata since that will require
 // parsing the metadata twice.
-func (o Object) Key() (_ key.Key, err error) {
+func (o Object) Key() (_ keys.Key, err error) {
 	// TODO: parse the key from the metadata without parsing the entire struct.
 	var meta *metadata.Metadata
 	if meta, err = o.Metadata(); err != nil {
@@ -105,6 +105,8 @@ func (o Object) Tombstone() bool {
 		return false
 	}
 
+	// TODO: rather than checking the data length, check a specific flag in the metadata.
+	// otherwise any empty objects users store will be considered tombstones.
 	d, _ := o.dataLength()
 	return d == 0
 }

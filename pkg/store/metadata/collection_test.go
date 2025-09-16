@@ -25,7 +25,7 @@ func TestCollection(t *testing.T) {
 		Name:        "Collection",
 		Fixture:     "collection.json",
 		StaticSize:  staticSize,
-		FixtureSize: 643,
+		FixtureSize: 637,
 		New:         func() TestObject { return &metadata.Collection{} },
 	}
 
