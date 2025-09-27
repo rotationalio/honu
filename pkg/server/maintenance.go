@@ -18,7 +18,7 @@ func (s *Server) Maintenance() middleware.Middleware {
 		return func(next httprouter.Handle) httprouter.Handle {
 			return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 				render.Negotiate(r).Render(http.StatusServiceUnavailable, w, &api.StatusReply{
-					Status:  "maintenance",
+					Status:  serverStatusMaintenance,
 					Version: pkg.Version(),
 					Uptime:  time.Since(s.started).String(),
 				})

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"go.rtnl.ai/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/lani"
 )
 
 // A lamport scalar indicates a timestamp or version in a vector clock that provides a

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.rtnl.ai/honu/pkg/errors"
-	. "go.rtnl.ai/honu/pkg/store/metadata"
+	. "go.rtnl.ai/honu/pkg/metadata"
 )
 
 func TestNameIdentifiers(t *testing.T) {

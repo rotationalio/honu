@@ -1,7 +1,7 @@
 package object
 
 import (
-	"go.rtnl.ai/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/lani"
 )
 
 // Create an object to store system data, which do not need metadata appended to the

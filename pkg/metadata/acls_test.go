@@ -3,7 +3,7 @@ package metadata_test
 import (
 	"testing"
 
-	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/metadata"
 )
 
 func TestAccessControl(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"go.rtnl.ai/honu/pkg/errors"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/mime"
 	"go.rtnl.ai/honu/pkg/server/render"
-	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/ulid"
 )
 
@@ -38,8 +38,7 @@ func (s *Server) CreateCollection(w http.ResponseWriter, r *http.Request, _ http
 		return
 	}
 
-	// TODO: validate collection name and fields
-
+	// NOTE: collection validation happens at the database layer.
 	if err = s.db.New(collection); err != nil {
 		render.Error(w, r, err)
 		return
@@ -100,8 +99,7 @@ func (s *Server) UpdateCollection(w http.ResponseWriter, r *http.Request, q http
 		}
 	}
 
-	// TODO: validate collection name and fields
-
+	// NOTE: collection validation happens at the database layer.
 	if err = s.db.Modify(collection); err != nil {
 		render.Error(w, r, err)
 		return

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/metadata"
 )
 
 func TestField(t *testing.T) {

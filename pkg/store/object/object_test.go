@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )

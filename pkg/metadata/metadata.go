@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"time"
 
+	"go.rtnl.ai/honu/pkg/lani"
 	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/keys"
-	"go.rtnl.ai/honu/pkg/store/lani"
 	"go.rtnl.ai/ulid"
 )
 

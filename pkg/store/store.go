@@ -8,11 +8,11 @@ import (
 	"go.etcd.io/bbolt"
 	"go.rtnl.ai/honu/pkg/config"
 	"go.rtnl.ai/honu/pkg/errors"
+	"go.rtnl.ai/honu/pkg/lani"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/lani"
-	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )

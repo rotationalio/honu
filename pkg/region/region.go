@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"go.rtnl.ai/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/lani"
 )
 
 // Region enumerates the clouds and regions that are available to Ensign in order to

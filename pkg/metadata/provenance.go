@@ -3,7 +3,7 @@ package metadata
 import (
 	"net"
 
-	"go.rtnl.ai/honu/pkg/store/lani"
+	"go.rtnl.ai/honu/pkg/lani"
 	"go.rtnl.ai/ulid"
 )
 

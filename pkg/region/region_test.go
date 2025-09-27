@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.rtnl.ai/honu/pkg/lani"
 	"go.rtnl.ai/honu/pkg/region"
-	"go.rtnl.ai/honu/pkg/store/lani"
 )
 
 func TestList(t *testing.T) {

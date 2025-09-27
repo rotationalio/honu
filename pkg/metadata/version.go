@@ -3,9 +3,9 @@ package metadata
 import (
 	"time"
 
+	"go.rtnl.ai/honu/pkg/lani"
 	"go.rtnl.ai/honu/pkg/region"
 	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/lani"
 )
 
 //===========================================================================

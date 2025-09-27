@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	. "go.rtnl.ai/honu/pkg/store/metadata"
+	. "go.rtnl.ai/honu/pkg/metadata"
 )
 
 func TestMetadata(t *testing.T) {

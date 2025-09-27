@@ -7,7 +7,7 @@ import (
 	"go.etcd.io/bbolt"
 	berrors "go.etcd.io/bbolt/errors"
 	"go.rtnl.ai/honu/pkg/errors"
-	"go.rtnl.ai/honu/pkg/store/metadata"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )

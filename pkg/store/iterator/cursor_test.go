@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/store/iterator"
 	"go.rtnl.ai/honu/pkg/store/keys"
 	"go.rtnl.ai/honu/pkg/store/lamport"
-	"go.rtnl.ai/honu/pkg/store/metadata"
 	"go.rtnl.ai/honu/pkg/store/object"
 	"go.rtnl.ai/ulid"
 )

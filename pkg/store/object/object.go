@@ -3,9 +3,9 @@ package object
 import (
 	"encoding/binary"
 
+	"go.rtnl.ai/honu/pkg/lani"
+	"go.rtnl.ai/honu/pkg/metadata"
 	"go.rtnl.ai/honu/pkg/store/keys"
-	"go.rtnl.ai/honu/pkg/store/lani"
-	"go.rtnl.ai/honu/pkg/store/metadata"
 )
 
 // A compatibility indicator, increment this number any time the underlying storage is
